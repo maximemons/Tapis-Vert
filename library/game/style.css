@@ -1,0 +1,89 @@
+body {
+  font-family: 'Trebuchet MS', sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #014d26 url("green-felt-texture.jpg") repeat; /* tapis vert */
+  color: #fff;
+}
+
+header {
+  text-align: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-bottom: 2px solid #ffd700;
+}
+
+h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: #ffd700;
+  text-shadow: 1px 1px 4px #000;
+}
+
+.game-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  gap: 2rem;
+}
+
+.game-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2rem;
+}
+
+.game-image img {
+  max-width: 280px;
+  border-radius: 16px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+}
+
+.game-info {
+  background: rgba(0,0,0,0.6);
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  border: 1px solid #ffd700;
+  text-align: left;
+  min-width: 200px;
+}
+
+.game-info p {
+  margin: 0.8rem 0;
+  font-size: 1.1rem;
+}
+
+.game-description {
+  max-width: 800px;
+  background: rgba(0,0,0,0.7);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #ffd700;
+  line-height: 1.6;
+}
+
+.game-description h2 {
+  margin-top: 0;
+  color: #ffd700;
+}
+
+footer {
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.back-button {
+  color: #ffd700;
+  text-decoration: none;
+  font-weight: bold;
+  background: rgba(0,0,0,0.7);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.back-button:hover {
+  background: rgba(255,215,0,0.3);
+}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tapis vert</title>
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="../loader.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="token">🎲</div>
+      <h1>Sélecteur de jeu</h1>
+    </header>
+
+    <div class="filters">
+      <select id="ownerSelect"><option value="">-- Propriétaires --</option></select>
+      <select id="styleSelect"><option value="">-- Style --</option></select>
+      <select id="playersSelect"><option value="">-- Joueurs --</option></select>
+      <select id="durationSelect">
+        <option value="">-- Durée --</option>
+        <option value="<15"><15 min</option>
+        <option value="15-30">15–30 min</option>
+        <option value="30-45">30–45 min</option>
+        <option value="60">≈1 h</option>
+        <option value="90">≈1 h 30</option>
+        <option value=">120">>2 h</option>
+      </select>
+    </div>
+
+    <div id="resultsCount"></div>
+    <div class="grid" id="grid">
+      <div id="loader" class="loader hidden">
+        <div class="loader-dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+        <p class="loader-text">Chargement de la ludothèque en cours</p>
+    </div>
+    </div>
+    <button class="surprise" id="surpriseBtn">Surprends-moi 🎲</button>
+  </div>
+
+  <script src="../gamesManagment.js"></script>
+  <script src="../levenstein.js"></script>
+  <script src="../loader.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

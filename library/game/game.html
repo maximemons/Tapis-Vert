@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title class="titre"></title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1 class="titre"></h1>
+  </header>
+  
+  <main class="game-detail">
+  	<div class="game-header">
+	    <div class="game-image">
+	      <img id="image">
+	    </div>
+	    
+	    <div class="game-info">
+	      <p><strong>Durée :</strong> <span id="duree"></span></p>
+	      <p><strong>Joueurs :</strong> <span id="joueurs"></span></p>
+	      <p><strong>Difficulté :</strong> <span id="difficulte"></span></p>
+	    </div>
+	</div>
+
+    <div class="game-description" style="display: none">
+      <h2>Description</h2>
+      <p id="description"></p>
+    </div>
+
+    <div class="game-description" style="display: none">
+      <h2>Règles en vidéo</h2>
+      <p id="video"></p>
+    </div>
+  </main>
+
+  <footer>
+    <a onclick="history.back()" class="back-button">← Retour à la liste</a>
+  </footer>
+
+  <script src="../../gamesManagment.js"></script>
+  <script src="../../levenstein.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
