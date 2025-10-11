@@ -1,0 +1,369 @@
+header {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:16px;
+}
+
+.token {
+  width:60px;height:60px;
+  border-radius:50%;
+  background:linear-gradient(var(--gold),#b89210);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;
+  box-shadow:inset 0 4px 8px rgba(0,0,0,0.3);
+}
+
+h1 { margin:0;font-size:28px }
+
+.filters {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-bottom:20px;
+}
+
+#wishlistButton {
+  display: none;
+}
+
+select, button {
+  padding:8px 12px;
+  border-radius:8px;
+  border:none;
+  font-size:14px;
+  background-color: var(--ivory);
+}
+
+#resultsCount {
+  margin-bottom:10px;
+  font-size:14px;
+  font-style:italic;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:16px;
+}
+
+.card {
+  background:var(--ivory);
+  color:var(--green);
+  padding:12px;
+  border-radius:var(--card-radius);
+  box-shadow:0 4px 12px rgba(0,0,0,0.25);
+  cursor:pointer;
+  transition:transform .2s;
+}
+
+.card:hover { transform:translateY(-4px) }
+
+.card img {
+  width:100%;height:120px;
+  object-fit:cover;border-radius:8px;
+}
+
+.card h3 { margin:8px 0 4px;font-size:16px }
+
+.info { font-size:13px;color:#333 }
+
+.tags { margin-top:6px;display:flex;flex-wrap:wrap;gap:6px }
+.tags span { background:#eee;padding:2px 6px;border-radius:6px;font-size:12px;color:#333 }
+
+.editButton {
+  margin-left: auto;
+  background:var(--ivory);
+  color:var(--green);
+  border-radius:999px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.surprise, .owners {
+  display:block;
+  margin:20px auto 0;
+  background:var(--ivory);
+  color:var(--green);
+  padding:12px 20px;
+  border-radius:999px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.rented {
+  background-color: #afaa9c;
+  text-decoration-line: line-through;
+  position: relative;
+}
+
+.rented::after {
+  content: "Prêté";
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #afaa9c;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transform-origin: center;
+}
+
+.extension {
+  color: orange;
+}
+
+.new {
+  position: relative; /* Pour positionner le badge par rapport à la div */
+}
+
+.new::after {
+  content: "Nouveau";
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  animation: bounce 1.5s infinite;
+  transform-origin: center;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.1) translateY(-5px); }
+}
+
+.editor {
+  margin: 10px 0;
+}
+
+.editor button {
+  width: 38px;
+}
+
+#logout {
+  color: red;
+}
+
+.strikeBtn {
+  position: relative;
+}
+
+.strikeBtn::before {
+  content: "";
+  position: absolute;
+  top: 5;
+  left: 2;
+  width: 100%;
+  height: 2px;
+  background: var(--green);;
+  transform: rotate(30deg);
+  transform-origin: left;
+}
+
+.back-to-top {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background-color: #333;
+  color: white;
+  border-radius: 5px;
+  display: felx;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  font-size: 24px;
+  z-index: 1000;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+.delBtn {
+  display: none;
+  width: 33%;
+  cursor: pointer;
+  background-color: inherit !important;
+}
+
+#modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  overflow: auto;
+  color: black;
+}
+
+#modal-content {
+  background-color: var(--ivory);
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 600px;
+  text-align: center;
+}
+
+#modal-delete, #modal-create, #modal-lent, #modal-back-lent {
+  display: none;
+}
+
+#modal-delete h2 {
+  color: black;
+}
+
+#modal-delete button, #modal-lent button, #modal-back-lent button, #modal-random button {
+  color: var(--ivory);
+  cursor: pointer;
+}
+
+#delOui, #lentOui, #backLentOui, #randomOk{
+  background-color: var(--green);
+}
+
+#delNon, #lentNon, #backLentNon {
+  background-color: #d10404;
+}
+
+#modal-create .modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(90vh - 120px);
+}
+
+#modal-create .modal-footer {
+  padding: 15px;
+  background: var(--ivory);
+  border-top: 1px solid #ddd;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+#modal-create .form-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  color: black;
+}
+
+#modal-create .form-section h2 {
+  margin-top: 0;
+  color: #3498db;
+  font-size: 1.2em;
+}
+
+#modal-create .form-group {
+  margin-bottom: 15px;
+}
+
+#modal-create label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+#modal-create .required:after {
+  content: " *";
+  color: red;
+}
+
+#modal-create input[type="text"]:required,
+#modal-create input[type="number"]:required,
+#modal-create select:required {
+  border-left: 3px solid #e74c3c;
+}
+
+#modal-create input[type="text"],
+#modal-create input[type="number"],
+#modal-create input[type="url"],
+#modal-create input[type="date"],
+#modal-create select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+  background-color: white;
+}
+
+#modal-create .two-columns {
+  display: flex;
+  gap: 15px;
+}
+
+#modal-create .two-columns .form-group {
+  flex: 1;
+}
+
+#modal-create .checkbox-group {
+  display: flex;
+  align-items: center;
+}
+
+#modal-create .checkbox-group input {
+  margin-right: 10px;
+}
+
+#modal-create button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+#modal-create #saveBtn {
+  background-color: #2ecc71;
+  color: white;
+}
+
+#modal-create #cancelBtn {
+  background-color: #e74c3c;
+  color: white;
+}
+
+#modal-create button:hover {
+  opacity: 0.9;
+}
+
+#modal-create #editor {
+  height: 200px;
+  margin-bottom: 20px;
+  background-color: white;
+}
+
+#modal-create .error-message {
+  color: #e74c3c;
+  font-size: 12px;
+  margin-top: -10px;
+  margin-bottom: 10px;
+  display: none;
+}
+
+.ql-snow.ql-toolbar button svg, .ql-snow .ql-toolbar button svg {
+  height:12px !important;
+}
+
+@media (max-width: 650px) {
+  .filters select {
+    width: 100%;
+  }
+}

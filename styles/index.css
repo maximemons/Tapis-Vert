@@ -1,0 +1,109 @@
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.login-container {
+  background: rgba(0, 0, 0, 0.1);
+  width: 320px;
+  text-align: center;
+}
+
+h1 {
+  margin-bottom: 1.5rem;
+  color: var(--ivory);
+}
+
+input {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+button {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--ivory);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+button:hover {
+  background-color: var(--gold);
+}
+
+.error {
+  color: red;
+  margin-bottom: 1rem;
+}
+
+.success {
+  color: var(--ivory);
+  margin-bottom: 1rem;
+}
+
+#loginBtn {
+  margin-bottom: 1rem;
+}
+
+#forgetPwd {
+  color: var(--ivory);
+  text-decoration: none;
+}
+
+#forgetPwd:hover {
+  font-weight: bold;
+  color: var(--gold);
+}
+
+/* EASTER EGG */
+.egg {
+  display: inline-block;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: filter 0.25s ease, transform 0.25s ease;
+  color: var(--ivory);
+}
+
+.egg span {
+  display: inline-block;
+  transition: transform 0.3s ease, color 0.25s, text-shadow 0.25s;
+  will-change: transform;
+}
+
+.egg.active span {
+  position: relative;
+  text-shadow:
+    -2px 0 #0ff,
+    2px 0 #f0f,
+    0 0 6px rgba(0, 255, 128, 0.6);
+  animation: glitch 0.5s steps(2, end) infinite;
+}
+
+@keyframes glitch {
+  0%   { clip-path: inset(0 0 0 0); transform: translate(0,0); }
+  10%  { clip-path: inset(5% 0 80% 0); transform: translateX(-3px); }
+  20%  { clip-path: inset(15% 0 60% 0); transform: translateX(3px); }
+  30%  { clip-path: inset(40% 0 40% 0); transform: translateX(-5px); }
+  40%  { clip-path: inset(70% 0 20% 0); transform: translateX(5px); }
+  50%  { clip-path: inset(10% 0 70% 0); transform: translateX(-2px); }
+  60%  { clip-path: inset(60% 0 30% 0); transform: translateX(2px); }
+  70%  { clip-path: inset(20% 0 60% 0); transform: translateX(-4px); }
+  80%  { clip-path: inset(80% 0 5% 0); transform: translateX(4px); }
+  100% { clip-path: inset(0 0 0 0); transform: translate(0,0); }
+}
+
+.egg:focus {
+  box-shadow: 0 0 0 4px rgba(34, 170, 34, 0.2);
+}
