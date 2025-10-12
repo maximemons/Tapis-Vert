@@ -79,7 +79,7 @@ getCurrentUser().then(async (user) => {
     
     document.getElementById("logout").addEventListener("click", logout);
     document.getElementById("editPencil").addEventListener("click", toggleEdit);
-    document.getElementById("editCreate").addEventListener("click", showCreateModal);
+    document.getElementById("editCreate").addEventListener("click", () => showCreateModal(undefined));
     
     quill = new Quill('#editor', {
         theme: 'snow',
@@ -229,7 +229,7 @@ displayedGame = gamesThatMatchFilter;
 gamesThatMatchFilter.forEach(game => {
     const el = document.createElement("div");
 
-    el.addEventListener("click", () => showGameDetails(game.id));
+    el.addEventListener("click", (event) => showGameDetails(event, game.id));
     
     const extension = game.estExtension == true ? "<sup class='extension'>extension</sup>" : "";
     el.classList.add("card");
@@ -251,7 +251,7 @@ gamesThatMatchFilter.forEach(game => {
             if(i == 0) {
                 delBtn.addEventListener("click", () => deleteGame(game.id));
             }else if(i == 1) {
-                delBtn.addEventListener("click", function(){alert("A venir");});
+                delBtn.addEventListener("click", () => showCreateModal(game.id));
             }else {
                 if(game.estPrete != undefined && game.estPrete.trim() != "") {
                     delBtn.style.transform = "rotate(180deg)";
@@ -330,7 +330,8 @@ function gameMatchFilter(game, filter) {
     
     if (filter.joueur && filter.joueur.trim() !== "") {
         const nb = parseInt(filter.joueur.trim(), 10);
-        const [minJ, maxJ] = game.joueurs || [0, 0];
+        let [minJ, maxJ] = game.joueurs || [0, 0];
+        if(maxJ == undefined) maxJ = minJ;
         if (nb < minJ || nb > maxJ) return false;
     }
     
@@ -351,9 +352,9 @@ function getFilter() {
     const params = url.searchParams;
     let result = {};
     
-    if(params.has("styleSelect"))
-        result.style = params.get('styleSelect');
-    if(params.has("styleSelect"))
+    if(params.has("styleFilter"))
+        result.style = params.get('styleFilter');
+    if(params.has("playerFilter"))
         result.joueur = params.get('playerFilter');
     if(params.has("durationFilter"))
         result.duree = params.get('durationFilter');
@@ -411,9 +412,10 @@ function toggleEdit() {
 }
 
 async function deleteGame(gameId) {
-    document.getElementById("modal-content").style.margin = "15% auto";
-    document.getElementById("modal").style.display = "block";
-    document.getElementById("modal-delete").style.display = "block";
+    let modal = document.getElementById("modal");
+    let modalContent = document.getElementById("modal-delete");
+
+    openModal(modal, modalContent, false);
     
     document.getElementById("delOui").addEventListener("click", async () => {
         await deleteDocument(COLLECTIONS.JEUX, gameId);
@@ -421,15 +423,13 @@ async function deleteGame(gameId) {
     });
     
     document.getElementById("delNon").addEventListener("click", () => {
-        document.getElementById("modal").style.display = "none";
-        document.getElementById("modal-delete").style.display = "none";
+        closeModal(modal, modalContent);
     });
 }
 
-async function showCreateModal() {
-    document.getElementById("modal-content").style.margin = "15px auto";
-    document.getElementById("modal").style.display = "block";
-    document.getElementById("modal-create").style.display = "block";
+async function showCreateModal(gameId) {
+    let modal = document.getElementById("modal");
+    let modalContent = document.getElementById("modal-create");
     
     const cancelBtn = document.getElementById("cancelBtn");
     const saveBtn = document.getElementById("saveBtn");
@@ -438,8 +438,34 @@ async function showCreateModal() {
     const titreError = document.getElementById("titreError");
     const joueursMinError = document.getElementById("joueursMinError");
     
+    if(gameId != undefined) {
+        let jeu = await getDocumentById(COLLECTIONS.JEUX, gameId);
+        document.getElementById("titre").value = jeu.nom;
+        document.getElementById("image").value = jeu.image || "";
+        document.getElementById("joueurs_min").value = jeu.joueurs[0] || "";
+        document.getElementById("joueurs_max").value = jeu.joueurs[1] || "";
+        document.getElementById("duree_min").value = jeu.duree[0] || "";
+        document.getElementById("duree_max").value = jeu.duree[1] || "";
+        if(jeu.difficulte != undefined && jeu.difficulte != "")
+            document.getElementById("difficulte").value = jeu.difficulte;
+        document.getElementById("extension").checked = jeu.estExtension;
+        document.getElementById("age_min").value = jeu.ageMinimal;
+        document.getElementById("date_achat").value = jeu.dateAchat;
+        quill.root.innerHTML = jeu.description;
+        document.getElementById("video").value = jeu.video;
+        document.getElementById("emplacement").value = jeu.emplacement;
+        let styles = document.getElementById("style");
+        for(let i = 0; i < styles.options.length; i++) {
+            if (jeu.styles.includes(styles.options[i].value)) {
+                styles.options[i].selected = true;
+            }
+        }
+    }
+
+    openModal(modal, modalContent, true, titreInput);
+
     cancelBtn.onclick = function() {
-        document.getElementById("modal").style.display = "none";
+        closeModal(modal, modalContent);
         resetFormAndScrollTop();
     }
     
@@ -489,7 +515,11 @@ async function showCreateModal() {
             document.getElementById('date_achat').value
         );
 
-        await setDocument(COLLECTIONS.JEUX, undefined, JSON.parse(JSON.stringify(jeu)));
+        if(gameId != undefined) {
+            await setDocument(COLLECTIONS.JEUX, gameId, JSON.parse(JSON.stringify(jeu)));
+        }else {
+            await setDocument(COLLECTIONS.JEUX, undefined, JSON.parse(JSON.stringify(jeu)));
+        }
         modal.style.display = "none";
         window.location.reload();
     }
@@ -507,10 +537,8 @@ function resetFormAndScrollTop() {
 
 async function lent(gameId, back) {
     let modalContent = back ? document.getElementById("modal-back-lent") : document.getElementById("modal-lent");
-
-    document.getElementById("modal-content").style.margin = "15% auto";
-    modalContent.style.display = "block";
-    document.getElementById("modal").style.display = "block";
+    let modal = document.getElementById("modal");
+    openModal(modal, modalContent, false, back ? undefined : document.getElementById("renter"));
 
     let btnOui = !back ? document.getElementById("lentOui") : document.getElementById("backLentOui");
     let btnNon = !back ? document.getElementById("lentNon") : document.getElementById("backLentNon");
@@ -533,8 +561,8 @@ async function lent(gameId, back) {
     });
     
     btnNon.addEventListener("click", () => {
-        document.getElementById("modal").style.display = "none";
-        modalContent.style.display = "none";
+        closeModal(modal, modalContent);
+
         if(back)
             document.getElementById("renter").value = "";
     });
@@ -560,6 +588,69 @@ function randomGame() {
     });
 }
 
-function showGameDetails(gameId) {
-    alert("A venir");
+async function showGameDetails(event, gameId) {
+    const eventSrc = event.srcElement;
+    if(eventSrc.tagName.toLowerCase() == "button" || eventSrc.tagName.toLowerCase() == "i")
+        return; 
+    
+    let game = await getDocumentById(COLLECTIONS.JEUX, gameId);
+
+    document.getElementById("modal-content").style.margin = "15px auto";
+    const modal = document.getElementById("modal");
+    const modalContent = document.getElementById("modal-show-game");
+
+    document.getElementById("modal-show-game-title").innerText = game.nom;
+    if(game.image != undefined && game.image.trim() != "")
+        document.getElementById("modal-show-game-image").src = game.image;
+    else
+        document.getElementById("modal-show-game-image").style.display = "none";
+    document.getElementById("modal-show-game-joueurs").innerText = game.joueurs.join(" à ");
+    document.getElementById("modal-show-game-duree").innerText = game.duree.join("-") + " min";
+    document.getElementById("modal-show-game-difficulte").innerText = DIFFICULTE[game.difficulte] || "";
+
+    let styles = [];
+    game.styles.forEach(style => {
+        styles.push(STYLES[style]);
+    }); 
+
+    document.getElementById("modal-show-game-styles").innerText = styles.join(", ");
+    document.getElementById("modal-show-game-age-min").innerText = game.ageMinimal || "";
+    if(game.description != undefined && game.description.trim != "")
+        document.getElementById("modal-show-game-description").innerHTML = game.description
+    else
+        document.getElementById("modal-show-game-description").style.display = "none";
+    if(game.video != undefined && game.video.trim() != "") 
+        document.getElementById("modal-show-game-video").src = game.video.replaceAll("https://www.youtube.com/watch?v=", "https://www.youtube.com/embed/");
+    else
+        document.getElementById("modal-show-game-video").style.display = "none";
+    if(game.emplacement != undefined && game.emplacement.trim() != "")
+        document.getElementById("modal-show-game-emplacement").innerText = game.emplacement;
+    else
+        document.getElementById("modal-show-game-emplacement").style.display = "none";
+
+    openModal(modal, modalContent, true);
+    document.getElementById("modal-show-game-close-cross").addEventListener("click", () => closeModal(modal, modalContent));
+}
+
+function openModal(modal, modalContent, fullPage, element) {
+    document.getElementById("modal-content").style.margin = (fullPage == undefined || fullPage == false) ? "15% auto" : "15px auto";
+    
+    document.getElementsByTagName("body")[0].addEventListener("keydown", (event) => {
+        if (event.key === "Escape")
+            closeModal(modal, modalContent);
+    });
+
+    modalContent.style.display = "block";
+    modal.style.display = "block";
+
+    try {
+        element.focus();
+    } catch(e) {}
+}
+
+function closeModal(modal, modalContent) {
+    modal.style.display = "none";
+    modalContent.style.display = "none";
+
+    document.getElementsByTagName("body")[0].removeEventListener("keydown", closeModal);
 }

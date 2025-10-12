@@ -55,6 +55,9 @@ select, button {
   box-shadow:0 4px 12px rgba(0,0,0,0.25);
   cursor:pointer;
   transition:transform .2s;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .card:hover { transform:translateY(-4px) }
@@ -216,7 +219,7 @@ select, button {
   text-align: center;
 }
 
-#modal-delete, #modal-create, #modal-lent, #modal-back-lent {
+#modal-delete, #modal-create, #modal-lent, #modal-back-lent, #modal-show-game {
   display: none;
 }
 
@@ -366,4 +369,113 @@ select, button {
   .filters select {
     width: 100%;
   }
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+/*.modal {
+background: white;
+border-radius: 12px;
+width: 90%;
+max-width: 700px;
+max-height: 90vh;
+overflow-y: auto;
+box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+transform: scale(0.95);
+transition: transform 0.3s ease;
+}*/
+.modal-overlay.active .modal {
+  transform: scale(1);
+}
+.modal-header {
+  padding: 20px 25px 15px;
+  border-bottom: 1px solid #eee;
+}
+.modal-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+}
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #7f8c8d;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  float: right;
+}
+.modal-content {
+  padding: 20px 25px;
+}
+.game-cover {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+.game-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.meta-item {
+  flex: 1;
+  min-width: 120px;
+}
+.meta-label {
+  font-size: 12px;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+.meta-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+.game-description {
+  line-height: 1.6;
+  color: #34495e;
+  margin-bottom: 20px;
+}
+.game-video {
+  width: 100%;
+  height: 350px;
+  border: none;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+.game-location {
+  display: flex;
+  align-items: center;
+  color: #7f8c8d;
+  font-style: italic;
+}
+.game-location::before {
+  content: "📍";
+  margin-right: 8px;
 }

@@ -49,127 +49,163 @@
       </select>
       <button id="wishlistButton" style="display: none;">Liste d'envies ✨</button>
     </div>
-
+    
     <div id="resultsCount"></div>
     <div class="grid" id="grid"></div>
     <button class="surprise" id="surpriseBtn">Surprends-moi 🎲</button>
   </div>
-
+  
   <div id="backToTop" class="back-to-top" style="display: none;">
     <span>↑</span>
   </div>
-
+  
   <div id="modal">
     <div id="modal-content">
       <div id="modal-delete">
         <h2>Es-tu sûr de vouloir supprimer ce jeu ?</h2>
-        <button id="delOui">Oui</button>
         <button id="delNon">Non</button>
+        <button id="delOui">Oui</button>
       </div>
       <div id="modal-lent">
         <h2>A qui veux-tu préter ce jeu ?</h2>
         <input type="text" style="margin-bottom:15px; width:80%;" id="renter"/><br/>
-        <button id="lentOui">Valider</button>
         <button id="lentNon">Annuler</button>
+        <button id="lentOui">Valider</button>
       </div>
       <div id="modal-back-lent">
         <h2>Ce jeu a-t-il bien été rendu ?</h2>
-        <button id="backLentOui">Oui</button>
         <button id="backLentNon">Non</button>
+        <button id="backLentOui">Oui</button>
       </div>
       <div id="modal-random"></div>
       <div id="modal-create">
         <div class="modal-content" id="modal-content">
-            <div class="modal-body">
-                <form id="jeuForm">
-                    <!-- Infos de base -->
-                    <div class="form-section">
-                        <h2>Infos de base</h2>
-                        <div class="form-group">
-                            <label for="titre" class="required">Titre</label>
-                            <input type="text" id="titre" name="titre" required>
-                            <div id="titreError" class="error-message">Le titre est obligatoire.</div>
-                        </div>
-                        <div class="form-group">
-                            <label for="image">Image (lien)</label>
-                            <input type="url" id="image" name="image">
-                        </div>
-                        <div class="two-columns">
-                            <div class="form-group">
-                                <label for="joueurs_min" class="required">Nombre de joueurs (min)</label>
-                                <input type="number" id="joueurs_min" name="joueurs_min" min="1" required>
-                                <div id="joueursMinError" class="error-message">Le nombre de joueurs minimum est obligatoire.</div>
-                            </div>
-                            <div class="form-group">
-                                <label for="joueurs_max">Nombre de joueurs (max)</label>
-                                <input type="number" id="joueurs_max" name="joueurs_max" min="1">
-                            </div>
-                        </div>
-                        <div class="two-columns">
-                            <div class="form-group">
-                                <label for="duree_min">Durée (min en minutes)</label>
-                                <input type="number" id="duree_min" name="duree_min" min="1">
-                            </div>
-                            <div class="form-group">
-                                <label for="duree_max">Durée (max en minutes)</label>
-                                <input type="number" id="duree_max" name="duree_max" min="1">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="difficulte">Difficulté</label>
-                            <select id="difficulte" name="difficulte">
-                                <option value="">-- Choisir --</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="style">Style</label>
-                            <select id="style" name="style" multiple>
-                                <option value="">-- Choisir --</option>
-                            </select>
-                            <small>Maintenez Ctrl/Cmd enfoncé pour sélectionner plusieurs styles.</small>
-                        </div>
-                        <div class="form-group checkbox-group">
-                            <input type="checkbox" id="extension" name="extension">
-                            <label for="extension">Est une extension</label>
-                        </div>
-                        <div class="form-group">
-                            <label for="age_min">Âge minimal</label>
-                            <input type="number" id="age_min" name="age_min" min="3">
-                        </div>
-                        <div class="form-group">
-                            <label for="date_achat">Date d'achat</label>
-                            <input type="date" id="date_achat" name="date_achat">
-                        </div>
-                    </div>
-
-                    <!-- Infos complémentaires -->
-                    <div class="form-section">
-                        <h2>Infos complémentaires</h2>
-                        <div class="form-group">
-                            <label for="description">Description</label>
-                            <div id="editor"></div>
-                            <input type="hidden" id="description" name="description">
-                        </div>
-                        <div class="form-group">
-                            <label for="video">Vidéo de présentation (lien YouTube)</label>
-                            <input type="url" id="video" name="video" placeholder="https://youtube.com/...">
-                        </div>
-                        <div class="form-group">
-                            <label for="emplacement">Emplacement</label>
-                            <input type="text" id="emplacement" name="emplacement">
-                        </div>
-                    </div>
-                </form>
+          <div class="modal-body">
+            <form id="jeuForm">
+              <!-- Infos de base -->
+              <div class="form-section">
+                <h2>Infos de base</h2>
+                <div class="form-group">
+                  <label for="titre" class="required">Titre</label>
+                  <input type="text" id="titre" name="titre" required>
+                  <div id="titreError" class="error-message">Le titre est obligatoire.</div>
+                </div>
+                <div class="form-group">
+                  <label for="image">Image (lien)</label>
+                  <input type="url" id="image" name="image">
+                </div>
+                <div class="two-columns">
+                  <div class="form-group">
+                    <label for="joueurs_min" class="required">Nombre de joueurs (min)</label>
+                    <input type="number" id="joueurs_min" name="joueurs_min" min="1" required>
+                    <div id="joueursMinError" class="error-message">Le nombre de joueurs minimum est obligatoire.</div>
+                  </div>
+                  <div class="form-group">
+                    <label for="joueurs_max">Nombre de joueurs (max)</label>
+                    <input type="number" id="joueurs_max" name="joueurs_max" min="1">
+                  </div>
+                </div>
+                <div class="two-columns">
+                  <div class="form-group">
+                    <label for="duree_min">Durée (min en minutes)</label>
+                    <input type="number" id="duree_min" name="duree_min" min="1">
+                  </div>
+                  <div class="form-group">
+                    <label for="duree_max">Durée (max en minutes)</label>
+                    <input type="number" id="duree_max" name="duree_max" min="1">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="difficulte">Difficulté</label>
+                  <select id="difficulte" name="difficulte">
+                    <option value="">-- Choisir --</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="style">Style</label>
+                  <select id="style" name="style" multiple>
+                    <option value="">-- Choisir --</option>
+                  </select>
+                  <small>Maintenez Ctrl/Cmd enfoncé pour sélectionner plusieurs styles.</small>
+                </div>
+                <div class="form-group checkbox-group">
+                  <input type="checkbox" id="extension" name="extension">
+                  <label for="extension">Est une extension</label>
+                </div>
+                <div class="form-group">
+                  <label for="age_min">Âge minimal</label>
+                  <input type="number" id="age_min" name="age_min" min="3">
+                </div>
+                <div class="form-group">
+                  <label for="date_achat">Date d'achat</label>
+                  <input type="date" id="date_achat" name="date_achat">
+                </div>
+              </div>
+              
+              <!-- Infos complémentaires -->
+              <div class="form-section">
+                <h2>Infos complémentaires</h2>
+                <div class="form-group">
+                  <label for="description">Description</label>
+                  <div id="editor"></div>
+                  <input type="hidden" id="description" name="description">
+                </div>
+                <div class="form-group">
+                  <label for="video">Vidéo de présentation (lien YouTube)</label>
+                  <input type="url" id="video" name="video" placeholder="https://youtube.com/...">
+                </div>
+                <div class="form-group">
+                  <label for="emplacement">Emplacement</label>
+                  <input type="text" id="emplacement" name="emplacement">
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="cancelBtn">Annuler</button>
+            <button type="button" id="saveBtn">Enregistrer</button>
+          </div>
+        </div>
+      </div>
+      <div id="modal-show-game">	
+        <button class="modal-close" id="modal-show-game-close-cross">&times;</button>
+        <div class="modal-header">
+          <h2 class="modal-title" id="modal-show-game-title"></h2>
+        </div>
+        <div class="modal-content">
+          <img id="modal-show-game-image" src=""class="game-cover">
+          <div class="game-meta">
+            <div class="meta-item">
+              <div class="meta-label">Joueurs</div>
+              <div class="meta-value" id="modal-show-game-joueurs"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" id="cancelBtn">Annuler</button>
-                <button type="button" id="saveBtn">Enregistrer</button>
+            <div class="meta-item">
+              <div class="meta-label">Durée</div>
+              <div class="meta-value" id="modal-show-game-duree"></div>
             </div>
+            <div class="meta-item">
+              <div class="meta-label">Difficulté</div>
+              <div class="meta-value" id="modal-show-game-difficulte"></div>
+            </div>
+          </div>
+          <div class="game-meta">
+            <div class="meta-item">
+              <div class="meta-label">Style</div>
+              <div class="meta-value" id="modal-show-game-styles"></div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Âge min.</div>
+              <div class="meta-value" id="modal-show-game-age-min"></div>
+            </div>
+          </div>
+          <p class="game-description" id="modal-show-game-description"></p>
+          <iframe id="modal-show-game-video" class="game-video"></iframe>
+          <p class="game-location" id="modal-show-game-emplacement"></p>
         </div>
       </div>
     </div>
   </div>
-
+  
   <script type="module" src="./scripts/dashboard.js"></script>
-
+  
 </body></html>
