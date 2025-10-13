@@ -38,10 +38,9 @@ document.getElementById("forgetPwd").addEventListener('click', (event) => {
         successDiv.textContent = "";
     });
 
-    /*auth.sendPasswordResetEmail(email)
+    auth.sendPasswordResetEmail(email)
     .then(() => {alert("Un email de réinitialisation à été envoyé !");})
-    .catch((error) => {alert("Une erreur s'est produite : " + error.message());});*/
-
+    .catch((error) => {alert("Une erreur s'est produite : " + error.message());});
 });
 
 
