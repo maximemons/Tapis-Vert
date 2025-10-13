@@ -1440,7 +1440,10 @@ getCurrentUser().then(async (user) => {
 
     //document.getElementById("surpriseBtn").addEventListener("click", randomGame);
     document.getElementById("surpriseBtn").addEventListener("click", async() => {
-        importGames(prompt("Qui"));
+        await importGames(maximeCatteau);
+		await importGames(guillaumeMons);
+		await importGames(celineMons);
+		await importGames(antoineMoreau);
     })
 });
 
