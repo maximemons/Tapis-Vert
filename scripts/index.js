@@ -30,17 +30,13 @@ document.getElementById("forgetPwd").addEventListener('click', (event) => {
     }
     sendPasswordResetEmail(auth, email)
     .then(() => {
-        successDiv.textContent = "Email de réinitialisation envoyé !";
+        successDiv.textContent = "Email de réinitialisation envoyé ! Vérifiez vos spams";
         errorDiv.textContent = "";
     })
     .catch((error) => {
         errorDiv.textContent = error.message;
         successDiv.textContent = "";
     });
-
-    auth.sendPasswordResetEmail(email)
-    .then(() => {alert("Un email de réinitialisation à été envoyé !");})
-    .catch((error) => {alert("Une erreur s'est produite : " + error.message());});
 });
 
 
