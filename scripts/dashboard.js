@@ -19,6 +19,12 @@ let nbGames = 0;
 let displayedGame = [];
 let me = "";
 
+window.onerror = function (msg, url, line, col, error) {
+  document.body.innerHTML += `<pre style="background:#fee;color:#900;padding:10px;">
+    ${msg} at ${url}:${line}:${col}
+  </pre>`;
+}
+
 getCurrentUser().then(async (user) => {
     if(!user) {
         logout();
