@@ -126,7 +126,7 @@ async function getUtilisateurFromDB(email) {
 function getAccessList(email, users) {
     const user = users.find(u => u.id === email);
     if (!user) return [];
-	if (user.access == undefined) return [];
+	if (user.acces == undefined) return [];
  
     if (user.acces.includes("*")) {
         const excludedEmails = user.liens || [];
