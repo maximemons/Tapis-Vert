@@ -19,12 +19,6 @@ let nbGames = 0;
 let displayedGame = [];
 let me = "";
 
-window.onerror = function (msg, url, line, col, error) {
-  document.body.innerHTML += `<pre style="background:#fee;color:#900;padding:10px;">
-    ${msg} at ${url}:${line}:${col}
-  </pre>`;
-}
-
 getCurrentUser().then(async (user) => {
     if(!user) {
         logout();
@@ -132,8 +126,9 @@ async function getUtilisateurFromDB(email) {
 function getAccessList(email, users) {
     const user = users.find(u => u.id === email);
     if (!user) return [];
+	if (user.access == undefined) return [];
  
-    if (user.access != undefined && user.acces.includes("*")) {
+    if (user.acces.includes("*")) {
         const excludedEmails = user.liens || [];
         excludedEmails.push(email);
         return users
