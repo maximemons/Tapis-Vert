@@ -132,7 +132,7 @@ function getAccessList(email, users) {
 	if(user.acces.includes("*")) {
 		const excludedEmails = user.liens || [];
         excludedEmails.push(email);
-		accessList = users.filter((u => !excludedEmails.includes(u.id)).map(u => u.id);
+		accessList = users.filter((u => !excludedEmails.includes(u.id)).map(u => u.id));
 	}else {
 		accessList = user.acces;
 	}
