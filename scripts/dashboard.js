@@ -666,9 +666,19 @@ function openModal(modal, modalContent, fullPage, element) {
     modalContent.style.display = "block";
     modal.style.display = "block";
 
+	document.getElementById("modal").addEventListener("click", (event) => checkIfClickOutsideModal(event, modal, modalContent));
+
     try {
         element.focus();
     } catch(e) {}
+}
+
+function checkIfClickOutsideModal(event, modal, modalContent) {
+	try{
+	    if(event.target.id == "modal") {
+	        closeModal(modal, modalContent);
+	    }
+	}catch(error){}
 }
 
 function closeModal(modal, modalContent) {
@@ -676,4 +686,5 @@ function closeModal(modal, modalContent) {
     modalContent.style.display = "none";
 
     document.getElementsByTagName("body")[0].removeEventListener("keydown", closeModal);
+	document.getElementById("modal").removeEventListener("click", checkIfClickOutsideModal);
 }
