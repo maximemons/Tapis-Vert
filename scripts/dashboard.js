@@ -128,7 +128,7 @@ function getAccessList(email, users) {
     if (!user) return [];
 	if (user.acces == undefined) return [];
  
-    if (user.acces.includes("*")) {
+    /*if (user.acces.includes("*")) {
         const excludedEmails = user.liens || [];
         excludedEmails.push(email);
         return users
@@ -137,8 +137,15 @@ function getAccessList(email, users) {
             displayName: `${u.prenom} ${u.nom.charAt(0)}.`,
             email: [u.id]
         }));
-    } else {
-        return user.acces.map(acc => {
+    } else {*/
+		let accessList = [];
+		if(user.acces.includes("*")) {
+			accessList = users.map(u => u.id);
+		}else {
+			accessList = user.acces;
+		}
+		
+        return accessList.map(acc => {
             const accUser = users.find(u => u.id === acc);
 			if(accUser.liens == undefined || accUser.liens.length == 0) {
 				return {
