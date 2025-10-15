@@ -127,45 +127,36 @@ function getAccessList(email, users) {
     const user = users.find(u => u.id === email);
     if (!user) return [];
 	if (user.acces == undefined) return [];
- 
-    /*if (user.acces.includes("*")) {
-        const excludedEmails = user.liens || [];
+	
+	let accessList = [];
+	if(user.acces.includes("*")) {
+		const excludedEmails = user.liens || [];
         excludedEmails.push(email);
-        return users
-        .filter(u => !excludedEmails.includes(u.id))
-        .map(u => ({
-            displayName: `${u.prenom} ${u.nom.charAt(0)}.`,
-            email: [u.id]
-        }));
-    } else {*/
-		let accessList = [];
-		if(user.acces.includes("*")) {
-			accessList = users.map(u => u.id);
-		}else {
-			accessList = user.acces;
-		}
+		accessList = users.filter((u => !excludedEmails.includes(u.id)).map(u => u.id);
+	}else {
+		accessList = user.acces;
+	}
 		
-        return accessList.map(acc => {
-            const accUser = users.find(u => u.id === acc);
-			if(accUser.liens == undefined || accUser.liens.length == 0) {
-				return {
-                	displayName: `${accUser.prenom} ${accUser.nom.charAt(0)}.`,
-                	email: [accUser.id]
-            	};
-			} else {
-				accUser.liens.push(accUser.id);
-				const linkedUsers = users.filter(user => accUser.liens.includes(user.id));
-			    const displayName = linkedUsers
-			    .map(u => `${u.prenom} ${u.nom.charAt(0)}.`)
+    return accessList.map(acc => {
+    	const accUser = users.find(u => u.id === acc);
+		if(accUser.liens == undefined || accUser.liens.length == 0) {
+			return {
+            	displayName: `${accUser.prenom} ${accUser.nom.charAt(0)}.`,
+                email: [accUser.id]
+            };
+		} else {
+			accUser.liens.push(accUser.id);
+			const linkedUsers = users.filter(user => accUser.liens.includes(user.id));
+			const displayName = linkedUsers
+				.map(u => `${u.prenom} ${u.nom.charAt(0)}.`)
 			    .join(" & ");
 			    
-			    return {
-			        displayName,
-			        email: [...new Set(accUser.liens)]
-			    };
-			}
-        });
-    }
+			return {
+				displayName,
+			    email: [...new Set(accUser.liens)]
+			};
+		}
+    });
 }
 
 function getDisplayNameAndEmails(email, users) {
