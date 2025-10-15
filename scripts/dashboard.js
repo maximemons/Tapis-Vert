@@ -140,10 +140,22 @@ function getAccessList(email, users) {
     } else {
         return user.acces.map(acc => {
             const accUser = users.find(u => u.id === acc);
-            return {
-                displayName: `${accUser.prenom} ${accUser.nom.charAt(0)}.`,
-                email: [accUser.id]
-            };
+			if(accUser.liens == undefined || accUser.liens.length == 0) {
+				return {
+                	displayName: `${accUser.prenom} ${accUser.nom.charAt(0)}.`,
+                	email: [accUser.id]
+            	};
+			} else {
+				const linkedUsers = users.filter(user => accUser.liens.has(user.id));
+			    const displayName = linkedUsers
+			    .map(u => `${u.prenom} ${u.nom.charAt(0)}.`)
+			    .join(" & ");
+			    
+			    return {
+			        displayName,
+			        email: [...new Set(accUser.liens)]
+			    };
+			}
         });
     }
 }
@@ -152,7 +164,6 @@ function getDisplayNameAndEmails(email, users) {
     const user = users.find(u => u.id === email);
     if (!user) return { displayName: "", email: [] };
     
-    // Récupérer les emails liés (liens + email de base)
     let emails = [user.id];
     if (user.liens && user.liens.length > 0) {
         emails = [...emails, ...user.liens];
