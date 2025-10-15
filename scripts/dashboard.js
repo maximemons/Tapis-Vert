@@ -14,7 +14,7 @@ let proprios = [];
 let editMode = false;
 
 let quill;
-let avisPersoQuill;
+//let avisPersoQuill;
 
 let nbGames = 0;
 let displayedGame = [];
@@ -92,7 +92,7 @@ getCurrentUser().then(async (user) => {
         }
     });
 
-	avisPersoQuill = new Quill('#avisPersoQuill', {
+	/*avisPersoQuill = new Quill('#avisPersoQuill', {
         theme: 'snow',
         modules: {
             toolbar: [
@@ -101,7 +101,7 @@ getCurrentUser().then(async (user) => {
                 ['link']
             ]
         }
-    });
+    });*/
 
 
     for (const [key, value] of Object.entries(DIFFICULTE)) {
