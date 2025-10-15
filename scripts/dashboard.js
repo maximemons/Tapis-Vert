@@ -14,6 +14,7 @@ let proprios = [];
 let editMode = false;
 
 let quill;
+let avisPersoQuill;
 
 let nbGames = 0;
 let displayedGame = [];
@@ -90,6 +91,18 @@ getCurrentUser().then(async (user) => {
             ]
         }
     });
+
+	avisPersoQuill = new Quill('#avisPersoQuill', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link']
+            ]
+        }
+    });
+
 
     for (const [key, value] of Object.entries(DIFFICULTE)) {
         let opt = document.createElement("option");
