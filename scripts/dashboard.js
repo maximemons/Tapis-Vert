@@ -138,7 +138,7 @@ function getAccessList(email, users) {
 		accessList = [...new Set(user.acces)];
 	}
 		
-    return accessList.map(acc => {
+    let result = accessList.map(acc => {
     	const accUser = users.find(u => u.id === acc);
 		if(accUser.liens == undefined || accUser.liens.length == 0) {
 			return {
@@ -158,6 +158,18 @@ function getAccessList(email, users) {
 			};
 		}
     });
+
+	const seenEmails = new Set();
+	const uniqueContacts = [];
+
+	for (const contact of result) {
+    	const emailKey = contact.email.sort().join(',');
+	    if (!seenEmails.has(emailKey)) {
+	        seenEmails.add(emailKey);
+	        uniqueContacts.push(contact);
+	    }
+	}
+	return uniqueContacts;
 }
 
 function getDisplayNameAndEmails(email, users) {
