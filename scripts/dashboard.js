@@ -146,6 +146,7 @@ function getAccessList(email, users) {
                 	email: [accUser.id]
             	};
 			} else {
+				accUser.liens.push(accUser.id);
 				const linkedUsers = users.filter(user => accUser.liens.includes(user.id));
 			    const displayName = linkedUsers
 			    .map(u => `${u.prenom} ${u.nom.charAt(0)}.`)
