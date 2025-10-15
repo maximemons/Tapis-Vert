@@ -667,10 +667,16 @@ function openModal(modal, modalContent, fullPage, element) {
     modal.style.display = "block";
 
 	document.getElementById("modal").addEventListener("click", (event) => checkIfClickOutsideModal(event, modal, modalContent));
+	history.pushState(null, null, window.location.href);
+	window.addEventListener("popstate", cancelSwipeBack);
 
     try {
         element.focus();
     } catch(e) {}
+}
+
+function cancelSwipeBack() {
+	history.pushState(null, null, window.location.href);
 }
 
 function checkIfClickOutsideModal(event, modal, modalContent) {
@@ -687,4 +693,5 @@ function closeModal(modal, modalContent) {
 
     document.getElementsByTagName("body")[0].removeEventListener("keydown", closeModal);
 	document.getElementById("modal").removeEventListener("click", checkIfClickOutsideModal);
+	window.removeEventListener("popstate", cancelSwipeBack);
 }
