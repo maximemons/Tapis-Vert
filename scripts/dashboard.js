@@ -404,8 +404,11 @@ function getFilter() {
 function applayFilter() {
     const params = url.searchParams;
     
-    if(params.has("ownerFilter"))
-        document.getElementById("ownerSelect").value = params.get("ownerFilter");
+    if(params.has("ownerFilter")) {
+		document.getElementById("ownerSelect").value = params.get("ownerFilter");
+	} else {
+		document.getElementById("ownerSelect").value = document.getElementById("ownerSelect").getElementsByTagName("option")[1].value;
+	}
 	if(params.has("styleFilter"))
         document.getElementById("styleSelect").value = params.get("styleFilter");
     if(params.has("playerFilter"))
