@@ -38,7 +38,7 @@ getCurrentUser().then(async (user) => {
     //Get Games
     const games = await getAllGamesFromAccessAndFamilly(accessList, famillyUsers);
     //Display Games
-    displayGames(games, getFilter(), famillyUsers.email);
+    displayGames(games, getFilter(famillyUsers.email), famillyUsers.email);
     document.getElementById("resultsCount").innerText = nbGames == 0 ? "Aucun jeu trouvé !" : `${nbGames} jeu(x) trouvé(s)`;
     //Get Filters
     for(let i = 0; i < proprios.length; i++) {
@@ -384,20 +384,23 @@ function gameMatchFilter(game, filter) {
     return true;
 }
 
-function getFilter() {
+function getFilter(me) {
     const params = url.searchParams;
     let result = {};
     
     if(params.has("styleFilter"))
-        result.style = params.get('styleFilter');
+		result.style = params.get('styleFilter');
     if(params.has("playerFilter"))
         result.joueur = params.get('playerFilter');
     if(params.has("durationFilter"))
         result.duree = params.get('durationFilter');
     if(params.has("difficultyFilter"))
         result.difficulte = params.get('difficultyFilter');
-    if(params.has("ownerFilter"))
+    if(params.has("ownerFilter") && params.get("ownerFilter") != "ALL") {
         result.proprio = params.get('ownerFilter');
+	} else {
+		result.proprio = me; 
+	}
     return result;
 }
 
