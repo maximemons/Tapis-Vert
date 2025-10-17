@@ -404,11 +404,8 @@ function getFilter() {
 function applayFilter() {
     const params = url.searchParams;
     
-    if(params.has("ownerFilter")){
+    if(params.has("ownerFilter"))
         document.getElementById("ownerSelect").value = params.get("ownerFilter");
-	}else{
-		document.getElementById("ownerSelect").value = document.getElementById("ownerSelect").getElementsByTagName("option")[1].value;
-	}
 	if(params.has("styleFilter"))
         document.getElementById("styleSelect").value = params.get("styleFilter");
     if(params.has("playerFilter"))
@@ -423,7 +420,7 @@ function setFilters() {
     url.search = "";
     const params = url.searchParams;
     
-    if(document.getElementById("ownerSelect").value.trim() != "" && document.getElementById("ownerSelect").value.trim() != "ALL")
+    if(document.getElementById("ownerSelect").value.trim())
 		params.append("ownerFilter", document.getElementById("ownerSelect").value);
 	if(document.getElementById("styleSelect").value.trim() != "")
 		params.append("styleFilter", document.getElementById("styleSelect").value);
