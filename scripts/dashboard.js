@@ -404,9 +404,12 @@ function getFilter() {
 function applayFilter() {
     const params = url.searchParams;
     
-    if(params.has("ownerFilter"))
+    if(params.has("ownerFilter")){
         document.getElementById("ownerSelect").value = params.get("ownerFilter");
-    if(params.has("styleFilter"))
+	}else{
+		document.getElementById("ownerSelect").value = document.getElementById("ownerSelect").getElementsByTagName("option")[1].value;
+	}
+	if(params.has("styleFilter"))
         document.getElementById("styleSelect").value = params.get("styleFilter");
     if(params.has("playerFilter"))
         document.getElementById("playersSelect").value = params.get("playerFilter");
@@ -420,16 +423,16 @@ function setFilters() {
     url.search = "";
     const params = url.searchParams;
     
-    if(document.getElementById("ownerSelect").value.trim() != "")
-        params.append("ownerFilter", document.getElementById("ownerSelect").value);
-    if(document.getElementById("styleSelect").value.trim() != "")
-        params.append("styleFilter", document.getElementById("styleSelect").value);
+    if(document.getElementById("ownerSelect").value.trim() != "" && document.getElementById("ownerSelect").value.trim() != "ALL")
+		params.append("ownerFilter", document.getElementById("ownerSelect").value);
+	if(document.getElementById("styleSelect").value.trim() != "")
+		params.append("styleFilter", document.getElementById("styleSelect").value);
     if(document.getElementById("playersSelect").value.trim() != "")
-        params.append("playerFilter", document.getElementById("playersSelect").value);
+		params.append("playerFilter", document.getElementById("playersSelect").value);		
     if(document.getElementById("durationSelect").value.trim() != "")
-        params.append("durationFilter", document.getElementById("durationSelect").value);
+		params.append("durationFilter", document.getElementById("durationSelect").value);		
     if(document.getElementById("difficultySelect").value.trim() != "")
-        params.append("difficultyFilter", document.getElementById("difficultySelect").value);
+		params.append("difficultyFilter", document.getElementById("difficultySelect").value);
     
     window.location = url;
 }
