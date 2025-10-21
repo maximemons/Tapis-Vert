@@ -398,8 +398,8 @@ function getFilter(me) {
         result.difficulte = params.get('difficultyFilter');
     if(params.has("ownerFilter") && params.get("ownerFilter") != "ALL") {
         result.proprio = params.get('ownerFilter');
-	} else {
-		result.proprio = me; 
+	} else if(params.get("ownerFilter") != "ALL") {
+		result.proprio = me.join(); 
 	}
     return result;
 }
