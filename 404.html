@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 – Allez en prison !</title>
+    <style>
+        body {
+            //background-color: #F8F8F8;
+            font-family: 'Bebas Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #1e3d59;
+        }
+        .error404 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 20px;
+        }
+        .number4 {
+            font-size: 4em;
+            color: #d4af37;
+            text-shadow: 2px 2px 0px #1e3d59;
+            font-weight: bold;
+        }
+        .prison-container {
+            background-color: #F8F8F8;
+            border: 6px solid #d4af37;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            max-width: 600px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+        h2 {
+            font-size: 2.5em;
+            color: #1e3d59;
+            margin-top: 0;
+        }
+        p {
+            font-size: 1.3em;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            font-family: 'Arial', sans-serif;
+        }
+        .chance-card {
+            border: 3px solid #1e3d59;
+            background-color: #FFD700;
+            color: #1e3d59;
+            padding: 15px;
+            margin: 20px auto;
+            font-weight: bold;
+            font-style: italic;
+            max-width: 80%;
+        }
+        .button {
+            display: inline-block;
+            background-color: #d4af37;
+            color: #1e3d59;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 1.3em;
+            margin: 10px;
+            font-weight: bold;
+            border: 2px solid #1e3d59;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background-color: #FFD700;
+            transform: scale(1.05);
+        }
+        .monopoly-image {
+            width: 150px;
+            height: 150px;
+            margin:15px;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="prison-container">
+        <div class="error404">
+            <span class="number4">4</span>
+            <img src="404.jpg" alt="M. Monopoly en prison" class="monopoly-image">
+            <span class="number4">4</span>
+        </div>
+        <p>
+           Vous avez atterri sur une case inexistante. Pas de loyer, mais pas de page non plus !
+        </p>
+        <a href="/" class="button">Retour à la case départ</a>
+        <p style="font-size: 0.9em; margin-top: 30px; font-style: italic;">
+            PS : Si vous passez par la case “Départ”, vous ne touchez pas 200€.
+        </p>
+    </div>
+</body>
+</html>
