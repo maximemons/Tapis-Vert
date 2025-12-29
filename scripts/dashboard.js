@@ -714,23 +714,3 @@ function closeModal(modal, modalContent) {
 	document.getElementById("modal").removeEventListener("click", checkIfClickOutsideModal);
 	window.removeEventListener("popstate", cancelSwipeBack);
 }
-
-
-async function googleImages(query, limit = 1) {
-  const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)} Philibert`;
-
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0"
-    }
-  });
-
-  const html = await res.text();
-
-  const matches = [...html.matchAll(/"https?:\/\/[^"]+\.(jpg|png|jpeg|webp)"/g)]
-    .map(m => m[0].replace(/"/g, ""));
-
-  return [...new Set(matches)].slice(0, limit);
-}
-
-await googleImages("Uno", 5).then(console.log);
