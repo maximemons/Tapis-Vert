@@ -732,3 +732,5 @@ async function googleImages(query, limit = 1) {
 
   return [...new Set(matches)].slice(0, limit);
 }
+
+await googleImages("Uno", 5).then(console.log);
