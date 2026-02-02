@@ -370,6 +370,7 @@ select, button {
 
 #wishlistGrid {
     padding-top: 20px;
+    width: 100%;
 }
 
 .ql-snow.ql-toolbar button svg, .ql-snow .ql-toolbar button svg {
