@@ -229,7 +229,8 @@ async function getAllGamesFromAccessAndFamilly(accessList, famillyUsers) {
             jeu.ageMinimal || 0,
             jeu.dateAchat,
             jeu.id,
-            jeu.wishlist || false
+            jeu.wishlist || false,
+            jeu.note || -1
         ));
     });
     
@@ -280,11 +281,16 @@ function displayGames(games, filter, familyEmail) {
         el.classList.add("card");
         if(game.estPrete != undefined && game.estPrete.trim() != "")
             el.classList.add("rented");
+        let note = ""; 
+        if((game.note || -1) > 0)
+            for(let i = 0; i < game.note; i++)
+                note += "⭐";
         el.innerHTML = `
             <img src="${game.image}" alt="${game.nom}">
             <h3>${game.nom}${extension}</h3>
             <div class='info'>⏱ ${displayDuree(game.duree)} min • 👥 ${displayJoueurs(game.joueurs)}</div>
             <div class='tags'>${displayStyles(game.styles)}</div>
+            <div class='notes'>${note}</div>
             `;
         
         if(familyEmail.indexOf(game.proprio) > -1) {
@@ -355,12 +361,17 @@ function displayWishedGames(games, proprio, familyEmail) {
         el.addEventListener("click", (event) => showGameDetails(event, game.id));
         
         const extension = game.estExtension == true ? "<sup class='extension'>extension</sup>" : "";
+        let note = ""; 
+        if((game.note || -1) > 0)
+            for(let i = 0; i < game.note; i++)
+                note += "⭐";
         el.classList.add("card");
         el.innerHTML = `
             <img src="${game.image}" alt="${game.nom}">
             <h3>${game.nom}${extension}</h3>
             <div class='info'>⏱ ${displayDuree(game.duree)} min • 👥 ${displayJoueurs(game.joueurs)}</div>
             <div class='tags'>${displayStyles(game.styles)}</div>
+            <div class='notes'>${note}</div>
             `;
         const normalize = list => [...new Set(list.map(e => e.trim().toLowerCase()))].sort();
 
@@ -512,19 +523,6 @@ function setFilters() {
     window.location = url;
 }
 
-function toggleEdit() {
-    let editorButton = document.getElementById("editPencil");
-    let allDelBtns = document.getElementsByClassName("delBtn");
-    
-    editMode = !editMode;
-    if(editMode) editorButton.classList.add("strikeBtn");
-    else editorButton.classList.remove("strikeBtn");
-    
-    Array.from(document.getElementsByClassName("delBtn")).forEach(btn => {
-        btn.style.display = editMode ? "inline" : "none";
-    });
-}
-
 async function deleteGame(gameId) {
     let modal = document.getElementById("modal");
     let modalContent = document.getElementById("modal-delete");
@@ -569,6 +567,7 @@ async function showCreateModal(gameId) {
         document.getElementById("video").value = jeu.video;
         document.getElementById("emplacement").value = jeu.emplacement;
         document.getElementById("wishlist").checked = jeu.wishlist || false;
+        document.getElementById("note").value = jeu.note || "-1";
         let styles = document.getElementById("style");
         for(let i = 0; i < styles.options.length; i++) {
             if (jeu.styles.includes(styles.options[i].value)) {
@@ -629,7 +628,8 @@ async function showCreateModal(gameId) {
             document.getElementById('age_min').value,
             document.getElementById('date_achat').value,
             undefined,
-            document.getElementById('wishlist').checked
+            document.getElementById('wishlist').checked,
+            parseInt(document.getElementById('note').value)
         );
 
         if(gameId != undefined) {
