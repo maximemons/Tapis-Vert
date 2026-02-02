@@ -173,25 +173,6 @@ select, button {
   transform-origin: left;
 }
 
-.back-to-top {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 50px;
-  height: 50px;
-  background-color: #333;
-  color: white;
-  border-radius: 5px;
-  display: felx;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  font-size: 24px;
-  z-index: 1000;
-  opacity: 0.7;
-  transition: opacity 0.3s;
-}
-
 .buyBtn, .delBtn {
   width: 33%;
   cursor: pointer;

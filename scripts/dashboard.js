@@ -576,11 +576,14 @@ async function showCreateModal(gameId) {
         }
     }
 
+    document.getElementById("searchImageBtn").addEventListener("click", () => searchImage());
+
     openModal(modal, modalContent, true, titreInput);
 
     cancelBtn.onclick = function() {
         closeModal(modal, modalContent);
         resetFormAndScrollTop();
+        document.getElementById("searchImageBtn").removeEventListener("click");
     }
     
     saveBtn.onclick = async function() {
@@ -818,4 +821,30 @@ async function showBuyModal(gameId) {
         await setDocument(COLLECTIONS.JEUX, gameId, JSON.parse(JSON.stringify(jeu)));
         window.location.reload();
     });
+}
+
+async function fetchWrapperProducts(search) {
+  const targetUrl = 'https://www.philibertnet.com/fr/recherche?search_query=' + search;
+  const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+
+  const response = await fetch(proxyUrl + targetUrl);
+  const htmlText = await response.text();
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlText, 'text/html');
+
+  let allWrappers = Array.from(doc.querySelectorAll('.wrapper_product a span img'));
+  let imgs = [];
+  if(allWrappers.length >= 1) {
+    return allWrappers[0].src;
+  }
+  return "";
+}
+
+function searchImage() {
+    if(document.getElementById("titre").value.trim() != "") {
+        fetchWrapperProducts(document.getElementById("titre").value).then(img => {
+            document.getElementById("image").value = img;
+        });   
+    }
 }
