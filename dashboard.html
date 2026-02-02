@@ -47,12 +47,13 @@
       <select id="difficultySelect">
         <option value="">-- Difficulté --</option>
       </select>
-      <button id="wishlistButton" style="display: none;">Liste d'envies ✨</button>
     </div>
     
     <div id="resultsCount"></div>
     <div class="grid" id="grid"></div>
     <button class="surprise" id="surpriseBtn">Surprends-moi 🎲</button>
+    <div id="wishlistCount"><b>✨ Wishlist - <span id="wishlistCountSpan">0</span> jeu(x) trouvé(s) ✨</b><span style="float: right;">(ne prend pas en compte les filtres)</span></div>
+    <div class="grid" id="wishlistGrid"></div>
   </div>
   
   <div id="backToTop" class="back-to-top" style="display: none;">
@@ -76,6 +77,13 @@
         <h2>Ce jeu a-t-il bien été rendu ?</h2>
         <button id="backLentNon">Non</button>
         <button id="backLentOui">Oui</button>
+      </div>
+      <div id="modal-bought">
+        <h2>Avez vous bien acheté ou reçu ce jeu ?</h2>
+        <p>A quelle date ?</p>
+        <input type="date" id="date_achat_2" name="date_achat"><br/><br/>
+        <button id="boughtNon">Annuler</button>
+        <button id="boughtOui">Valider</button>
       </div>
       <div id="modal-random"></div>
       <div id="modal-create">
@@ -139,6 +147,10 @@
                 <div class="form-group">
                   <label for="date_achat">Date d'achat</label>
                   <input type="date" id="date_achat" name="date_achat">
+                </div>
+                <div class="form-group checkbox-group">
+                  <input type="checkbox" id="wishlist" name="wishlist">
+                  <label for="wishlist">Pas acheté, ajouter a la wishlist</label>
                 </div>
               </div>
               

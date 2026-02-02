@@ -9,7 +9,7 @@ class Utilisateurs {
 };
 
 class Jeux {
-    constructor(proprio, nom, joueurs = [], duree = [], difficulte, styles = [], estExtension = false, estPrete, description, image, video, emplacement, ageMinimal, dateAchat, id) {
+    constructor(proprio, nom, joueurs = [], duree = [], difficulte, styles = [], estExtension = false, estPrete, description, image, video, emplacement, ageMinimal, dateAchat, id, wishlist) {
         this.proprio = proprio;
         this.nom = nom;
         this.joueurs = joueurs;
@@ -25,6 +25,7 @@ class Jeux {
         this.ageMinimal = ageMinimal;
         this.dateAchat = dateAchat;
         this.id = id;
+        this.wishlist = wishlist;
     }
 }
 

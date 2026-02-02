@@ -228,7 +228,8 @@ async function getAllGamesFromAccessAndFamilly(accessList, famillyUsers) {
             jeu.emplacement,
             jeu.ageMinimal || 0,
             jeu.dateAchat,
-            jeu.id
+            jeu.id,
+            jeu.wishlist || false
         ));
     });
     
@@ -242,81 +243,146 @@ function displayGames(games, filter, familyEmail) {
     //Trier les jeux dans l'ordre alphabétique
     games.sort((a, b) => 
         a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' })
-);
+    );
 
-//On récupére la grille
-const grid = document.getElementById("grid");
-grid.innerHTML = "";
+    let gamesWished = [];
+    let gamesOwned = [];
 
-let setStyles = new Set();
-let setJoueurs = new Set();
-let setDifficulte = new Set();
+    games.forEach(game => {
+        if(game.wishlist) gamesWished.push(game);
+        else gamesOwned.push(game);
+    });
 
-// On filtre les jeux
-const gamesThatMatchFilter = filter == undefined ? games : [];
-if(filter) {
-    games.forEach(game => { if(gameMatchFilter(game, filter)) gamesThatMatchFilter.push(game); });
-} 
+    //On récupére la grille
+    const grid = document.getElementById("grid");
+    grid.innerHTML = "";
 
-nbGames = gamesThatMatchFilter.length;
-displayedGame = gamesThatMatchFilter;
+    let setStyles = new Set();
+    let setJoueurs = new Set();
+    let setDifficulte = new Set();
 
-// On affiche la grille
-gamesThatMatchFilter.forEach(game => {
-    const el = document.createElement("div");
+    // On filtre les jeux
+    const gamesThatMatchFilter = filter == undefined ? games : [];
+    if(filter) {
+        gamesOwned.forEach(game => { if(gameMatchFilter(game, filter)) gamesThatMatchFilter.push(game); });
+    } 
 
-    el.addEventListener("click", (event) => showGameDetails(event, game.id));
-    
-    const extension = game.estExtension == true ? "<sup class='extension'>extension</sup>" : "";
-    el.classList.add("card");
-    if(game.estPrete != undefined && game.estPrete.trim() != "")
-        el.classList.add("rented");
-    el.innerHTML = `
-  		<img src="${game.image}" alt="${game.nom}">
-  		<h3>${game.nom}${extension}</h3>
-  		<div class='info'>⏱ ${displayDuree(game.duree)} min • 👥 ${displayJoueurs(game.joueurs)}</div>
-  		<div class='tags'>${displayStyles(game.styles)}</div>
-  		`;
-    
-    if(familyEmail.indexOf(game.proprio) > -1) {
-        const delBtnDiv = document.createElement("div");
-        for(let i = 0; i < 3; i++) {
-            const delBtn = document.createElement("button");
-            delBtn.classList.add("delBtn");
-            delBtn.innerHTML = `<i class='fas fa-${i == 0 ? "trash" : (i == 1 ? "pencil" : "paper-plane")}'></i>`;
-            if(i == 0) {
-                delBtn.addEventListener("click", () => deleteGame(game.id));
-            }else if(i == 1) {
-                delBtn.addEventListener("click", () => showCreateModal(game.id));
-            }else {
-                if(game.estPrete != undefined && game.estPrete.trim() != "") {
-                    delBtn.style.transform = "rotate(180deg)";
+    nbGames = gamesThatMatchFilter.length;
+    displayedGame = gamesThatMatchFilter;
+
+    // On affiche la grille
+    gamesThatMatchFilter.forEach(game => {
+        const el = document.createElement("div");
+
+        el.addEventListener("click", (event) => showGameDetails(event, game.id));
+        
+        const extension = game.estExtension == true ? "<sup class='extension'>extension</sup>" : "";
+        el.classList.add("card");
+        if(game.estPrete != undefined && game.estPrete.trim() != "")
+            el.classList.add("rented");
+        el.innerHTML = `
+            <img src="${game.image}" alt="${game.nom}">
+            <h3>${game.nom}${extension}</h3>
+            <div class='info'>⏱ ${displayDuree(game.duree)} min • 👥 ${displayJoueurs(game.joueurs)}</div>
+            <div class='tags'>${displayStyles(game.styles)}</div>
+            `;
+        
+        if(familyEmail.indexOf(game.proprio) > -1) {
+            const delBtnDiv = document.createElement("div");
+            for(let i = 0; i < 3; i++) {
+                const delBtn = document.createElement("button");
+                delBtn.classList.add("delBtn");
+                delBtn.innerHTML = `<i class='fas fa-${i == 0 ? "trash" : (i == 1 ? "pencil" : "paper-plane")}'></i>`;
+                if(i == 0) {
+                    delBtn.addEventListener("click", () => deleteGame(game.id));
+                }else if(i == 1) {
+                    delBtn.addEventListener("click", () => showCreateModal(game.id));
+                }else {
+                    if(game.estPrete != undefined && game.estPrete.trim() != "") {
+                        delBtn.style.transform = "rotate(180deg)";
+                    }
+                    delBtn.addEventListener("click", () => lent(game.id, (game.estPrete != undefined && game.estPrete.trim() != "")));
                 }
-                delBtn.addEventListener("click", () => lent(game.id, (game.estPrete != undefined && game.estPrete.trim() != "")));
+                delBtnDiv.appendChild(delBtn);
             }
-            delBtnDiv.appendChild(delBtn);
+            
+            el.appendChild(delBtnDiv);
         }
         
-        el.appendChild(delBtnDiv);
-    }
-    
-    grid.appendChild(el);
-    
-    game.styles.forEach(s => setStyles.add(s));
-    
-    if(game.joueurs.length == 1)
-        setJoueurs.add(game.joueurs[0]);
-    else if(game.joueurs.length == 2) {
-        for (let i = game.joueurs[0]; i <= game.joueurs[1]; i++) {
-            setJoueurs.add(i);
+        grid.appendChild(el);
+        
+        game.styles.forEach(s => setStyles.add(s));
+        
+        if(game.joueurs.length == 1)
+            setJoueurs.add(game.joueurs[0]);
+        else if(game.joueurs.length == 2) {
+            for (let i = game.joueurs[0]; i <= game.joueurs[1]; i++) {
+                setJoueurs.add(i);
+            }
         }
-    }
-    setDifficulte.add(game.difficulte);
-});
+        setDifficulte.add(game.difficulte);
+    });
 
-stylesList = Array.from(setStyles).sort();
-joueursList = Array.from(setJoueurs).sort((a, b) => a - b);
-difficulteList = Array.from(setDifficulte).sort();
+    stylesList = Array.from(setStyles).sort();
+    joueursList = Array.from(setJoueurs).sort((a, b) => a - b);
+    difficulteList = Array.from(setDifficulte).sort();
+
+    if(filter != {} && filter.proprio != undefined) {
+        displayWishedGames(gamesWished, filter.proprio, familyEmail);
+    }
+}
+
+function displayWishedGames(games, proprio, familyEmail) {
+
+    let gamesMatchProprio = [];
+    games.forEach(game => {
+        if(proprio.split(",").indexOf(game.proprio) > -1)
+            gamesMatchProprio.push(game);
+    });
+    let nbGames = gamesMatchProprio.length;
+
+    gamesMatchProprio.sort((a, b) => 
+        a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' })
+    );
+
+    document.getElementById("wishlistCountSpan").innerText = nbGames;
+
+    let grid = document.getElementById("wishlistGrid");
+
+    // On affiche la grille
+    gamesMatchProprio.forEach(game => {
+        const el = document.createElement("div");
+
+        el.addEventListener("click", (event) => showGameDetails(event, game.id));
+        
+        const extension = game.estExtension == true ? "<sup class='extension'>extension</sup>" : "";
+        el.classList.add("card");
+        el.innerHTML = `
+            <img src="${game.image}" alt="${game.nom}">
+            <h3>${game.nom}${extension}</h3>
+            <div class='info'>⏱ ${displayDuree(game.duree)} min • 👥 ${displayJoueurs(game.joueurs)}</div>
+            <div class='tags'>${displayStyles(game.styles)}</div>
+            `;
+        const normalize = list => [...new Set(list.map(e => e.trim().toLowerCase()))].sort();
+
+        const proprioArray = normalize(proprio.split(","));
+        const familyArray = normalize(familyEmail);
+
+        const areSameEmails = JSON.stringify(proprioArray) === JSON.stringify(familyArray);
+
+        if(areSameEmails) {
+            const delBtnDiv = document.createElement("div");
+            const buyBtn = document.createElement("button");
+            buyBtn.classList.add("buyBtn");
+            buyBtn.innerHTML = `<i class='fas fa-eur'></i>`;
+            buyBtn.addEventListener("click", (event) => showBuyModal(game.id));
+
+            delBtnDiv.appendChild(buyBtn);
+            el.appendChild(delBtnDiv);
+        }
+        
+        grid.appendChild(el);
+    });
 }
 
 function displayDuree(duree) {
@@ -496,6 +562,7 @@ async function showCreateModal(gameId) {
         quill.root.innerHTML = jeu.description;
         document.getElementById("video").value = jeu.video;
         document.getElementById("emplacement").value = jeu.emplacement;
+        document.getElementById("wishlist").checked = jeu.wishlist || false;
         let styles = document.getElementById("style");
         for(let i = 0; i < styles.options.length; i++) {
             if (jeu.styles.includes(styles.options[i].value)) {
@@ -554,7 +621,9 @@ async function showCreateModal(gameId) {
             document.getElementById('video').value,
             document.getElementById('emplacement').value,
             document.getElementById('age_min').value,
-            document.getElementById('date_achat').value
+            document.getElementById('date_achat').value,
+            undefined,
+            document.getElementById('wishlist').checked
         );
 
         if(gameId != undefined) {
@@ -576,6 +645,8 @@ function resetFormAndScrollTop() {
     });
     form.parentElement.scrollTop = 0;
 }
+
+
 
 async function lent(gameId, back) {
     let modalContent = back ? document.getElementById("modal-back-lent") : document.getElementById("modal-lent");
@@ -657,16 +728,22 @@ async function showGameDetails(event, gameId) {
 
     document.getElementById("modal-show-game-styles").innerText = styles.join(", ");
     document.getElementById("modal-show-game-age-min").innerText = game.ageMinimal || "";
-    if(game.description != undefined && game.description.trim != "")
-        document.getElementById("modal-show-game-description").innerHTML = game.description
+    if(game.description != undefined && game.description.trim != "") {
+        document.getElementById("modal-show-game-description").innerHTML = game.description;
+        document.getElementById("modal-show-game-description").style.display = "inherit";
+    }
     else
         document.getElementById("modal-show-game-description").style.display = "none";
-    if(game.video != undefined && game.video.trim() != "") 
+    if(game.video != undefined && game.video.trim() != "") {
         document.getElementById("modal-show-game-video").src = game.video.replaceAll("https://www.youtube.com/watch?v=", "https://www.youtube.com/embed/");
+        document.getElementById("modal-show-game-video").style.display = "inherit";
+    }
     else
         document.getElementById("modal-show-game-video").style.display = "none";
-    if(game.emplacement != undefined && game.emplacement.trim() != "")
+    if(game.emplacement != undefined && game.emplacement.trim() != "") {
         document.getElementById("modal-show-game-emplacement").innerText = game.emplacement;
+        document.getElementById("modal-show-game-emplacement").style.display = "inherit";
+    }
     else
         document.getElementById("modal-show-game-emplacement").style.display = "none";
 
@@ -713,4 +790,26 @@ function closeModal(modal, modalContent) {
     document.getElementsByTagName("body")[0].removeEventListener("keydown", closeModal);
 	document.getElementById("modal").removeEventListener("click", checkIfClickOutsideModal);
 	window.removeEventListener("popstate", cancelSwipeBack);
+}
+
+async function showBuyModal(gameId) {
+    let modal = document.getElementById("modal");
+    let modalContent = document.getElementById("modal-bought");
+    
+    const cancelBtn = document.getElementById("boughtNon");
+    const saveBtn = document.getElementById("boughtOui");
+    
+    const dateForm = document.getElementById("date_achat_2");
+    dateForm.value = "";
+
+    openModal(modal, modalContent, false, dateForm);
+    document.getElementById("boughtNon").addEventListener("click", () => closeModal(modal, modalContent));
+    document.getElementById("boughtOui").addEventListener("click", async () => {
+        let jeu = await getDocumentById(COLLECTIONS.JEUX, gameId);
+        jeu.wishlist = false;
+        jeu.dateAchat = dateForm.value;
+        
+        await setDocument(COLLECTIONS.JEUX, gameId, JSON.parse(JSON.stringify(jeu)));
+        window.location.reload();
+    });
 }

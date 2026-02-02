@@ -193,6 +193,8 @@ select, button {
 
 .delBtn {
   display: none;
+}
+.buyBtn, .delBtn {
   width: 33%;
   cursor: pointer;
   background-color: inherit !important;
@@ -219,7 +221,7 @@ select, button {
   text-align: center;
 }
 
-#modal-delete, #modal-create, #modal-lent, #modal-back-lent, #modal-show-game {
+#modal-delete, #modal-create, #modal-lent, #modal-back-lent, #modal-show-game, #modal-bought {
   display: none;
 }
 
@@ -227,16 +229,16 @@ select, button {
   color: black;
 }
 
-#modal-delete button, #modal-lent button, #modal-back-lent button, #modal-random button {
+#modal-delete button, #modal-lent button, #modal-back-lent button, #modal-random button, #modal-bought button {
   color: var(--ivory);
   cursor: pointer;
 }
 
-#delOui, #lentOui, #backLentOui, #randomOk{
+#delOui, #lentOui, #backLentOui, #randomOk, #boughtOui{
   background-color: var(--green);
 }
 
-#delNon, #lentNon, #backLentNon {
+#delNon, #lentNon, #backLentNon, #boughtNon {
   background-color: #d10404;
 }
 
@@ -359,6 +361,15 @@ select, button {
   margin-top: -10px;
   margin-bottom: 10px;
   display: none;
+}
+
+#wishlistCount {
+    margin-top: 15px;
+    border-top: 1px solid;
+}
+
+#wishlistGrid {
+    padding-top: 20px;
 }
 
 .ql-snow.ql-toolbar button svg, .ql-snow .ql-toolbar button svg {
