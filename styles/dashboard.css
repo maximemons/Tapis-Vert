@@ -191,9 +191,6 @@ select, button {
   transition: opacity 0.3s;
 }
 
-.delBtn {
-  display: none;
-}
 .buyBtn, .delBtn {
   width: 33%;
   cursor: pointer;

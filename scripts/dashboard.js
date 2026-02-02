@@ -78,7 +78,7 @@ getCurrentUser().then(async (user) => {
     document.getElementById("difficultySelect").addEventListener("change", () => setFilters());
     
     document.getElementById("logout").addEventListener("click", logout);
-    document.getElementById("editPencil").addEventListener("click", toggleEdit);
+    //document.getElementById("editPencil").addEventListener("click", toggleEdit);
     document.getElementById("editCreate").addEventListener("click", () => showCreateModal(undefined));
     
     quill = new Quill('#editor', {
@@ -352,7 +352,6 @@ function displayWishedGames(games, proprio, familyEmail) {
     // On affiche la grille
     gamesMatchProprio.forEach(game => {
         const el = document.createElement("div");
-
         el.addEventListener("click", (event) => showGameDetails(event, game.id));
         
         const extension = game.estExtension == true ? "<sup class='extension'>extension</sup>" : "";
@@ -372,12 +371,19 @@ function displayWishedGames(games, proprio, familyEmail) {
 
         if(areSameEmails) {
             const delBtnDiv = document.createElement("div");
-            const buyBtn = document.createElement("button");
-            buyBtn.classList.add("buyBtn");
-            buyBtn.innerHTML = `<i class='fas fa-eur'></i>`;
-            buyBtn.addEventListener("click", (event) => showBuyModal(game.id));
-
-            delBtnDiv.appendChild(buyBtn);
+            for(let i = 0; i < 3; i++) {
+                const delBtn = document.createElement("button");
+                delBtn.classList.add("delBtn");
+                delBtn.innerHTML = `<i class='fas fa-${i == 0 ? "trash" : (i == 1 ? "pencil" : "eur")}'></i>`;
+                if(i == 0) {
+                    delBtn.addEventListener("click", () => deleteGame(game.id));
+                }else if(i == 1) {
+                    delBtn.addEventListener("click", () => showCreateModal(game.id));
+                }else {
+                    delBtn.addEventListener("click", (event) => showBuyModal(game.id));
+                }
+                delBtnDiv.appendChild(delBtn);
+            }
             el.appendChild(delBtnDiv);
         }
         
