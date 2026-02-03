@@ -836,7 +836,7 @@ async function fetchWrapperProducts(search) {
   let allWrappers = Array.from(doc.querySelectorAll('.wrapper_product a span img'));
   let imgs = [];
   if(allWrappers.length >= 1) {
-    return allWrappers[0].src;
+    return allWrappers[0].src.replace("medium_default", "large_default");
   }
   return "";
 }
