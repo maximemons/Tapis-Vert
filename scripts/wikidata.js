@@ -55,11 +55,6 @@ function nombres(entite, prop) {
     return valeurs(entite, prop).map(v => parseFloat(v.amount)).filter(Number.isFinite);
 }
 
-function libelle(entite, langues = ["fr", "en"]) {
-    for (const l of langues) if (entite?.labels?.[l]?.value) return entite.labels[l].value;
-    return "";
-}
-
 export function estUnJeu(entite) {
     if (!entite?.claims) return false;
     return Boolean(
@@ -68,32 +63,98 @@ export function estUnJeu(entite) {
     );
 }
 
+/** Titre d'article Wikipédia sans précision entre parenthèses : « Azul (jeu) » -> « Azul ». */
+export function titreSansPrecision(titre) {
+    return (titre || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
+/** Nom à afficher, en français dès que possible (libellé FR, sinon titre Wikipédia FR, sinon anglais). */
+export function nomFrancais(entite) {
+    return entite?.labels?.fr?.value
+        || titreSansPrecision(entite?.sitelinks?.frwiki?.title)
+        || entite?.labels?.en?.value
+        || "";
+}
+
+const API_WIKIPEDIA_FR = "https://fr.wikipedia.org/w/api.php";
+
+function urlWikipediaFr(params) {
+    const u = new URL(API_WIKIPEDIA_FR);
+    Object.entries({ action: "query", format: "json", formatversion: "2", origin: "*", ...params })
+        .forEach(([k, v]) => u.searchParams.set(k, v));
+    return u.href;
+}
+
+/** Identifiants Wikidata des articles Wikipédia FR renvoyés par un générateur, dans l'ordre de pertinence. */
+function qidsDepuisWikipedia(reponse) {
+    return (reponse?.query?.pages || [])
+        .slice()
+        .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+        .map(p => p.pageprops?.wikibase_item)
+        .filter(Boolean);
+}
+
 /**
  * Suggestions pour un nom saisi : [{ id, nom, description }].
- * On ne garde que les éléments qui sont réellement des jeux (« Azul » renvoie aussi une couleur…).
+ *
+ * Wikidata seul ne suffit pas en français : beaucoup de jeux n'y ont qu'un nom anglais
+ * (« Ticket to Ride » pour « Les Aventuriers du Rail »). On interroge donc en parallèle :
+ *   1. Wikipédia FR, titres commençant par la saisie (redirections comprises)
+ *   2. Wikidata, noms et alias en français
+ *   3. Wikidata, tous noms et alias dans toutes les langues, limité aux jeux ayant un identifiant BGG
+ *   4. Wikipédia FR, recherche plein texte dans les titres (mots dans le désordre, au milieu…)
+ * Les résultats sont fusionnés dans cet ordre, dédoublonnés, puis filtrés pour ne garder que des jeux.
+ * Une source en panne n'empêche pas les autres de répondre.
  */
 export async function rechercherJeux(texte, { fetchImpl, signal, limite = 8 } = {}) {
     const q = (texte || "").trim();
     if (q.length < 2) return [];
-    const recherche = await getJson(urlApi({
-        action: "wbsearchentities", search: q, language: "fr", uselang: "fr", type: "item", limit: 20
-    }), { fetchImpl, signal });
-    const ids = (recherche.search || []).map(r => r.id);
+    const opts = { fetchImpl, signal };
+    const motsTitre = q.split(/\s+/).filter(m => m.length > 1).map(m => `intitle:${m.replace(/[":]/g, "")}`).join(" ");
+
+    const sources = await Promise.allSettled([
+        getJson(urlWikipediaFr({
+            generator: "prefixsearch", gpssearch: q, gpslimit: "15", gpsnamespace: "0",
+            redirects: "1", prop: "pageprops", ppprop: "wikibase_item"
+        }), opts).then(qidsDepuisWikipedia),
+        getJson(urlApi({
+            action: "wbsearchentities", search: q, language: "fr", uselang: "fr", type: "item", limit: 20
+        }), opts).then(r => (r.search || []).map(x => x.id)),
+        getJson(urlApi({
+            action: "query", list: "search", srsearch: `${q} haswbstatement:${P.BGG}`, srnamespace: "0", srlimit: "15"
+        }), opts).then(r => (r.query?.search || []).map(x => x.title)),
+        motsTitre
+            ? getJson(urlWikipediaFr({
+                generator: "search", gsrsearch: motsTitre, gsrlimit: "15", gsrnamespace: "0",
+                prop: "pageprops", ppprop: "wikibase_item"
+            }), opts).then(qidsDepuisWikipedia)
+            : Promise.resolve([])
+    ]);
+
+    if (signal?.aborted) throw new DOMException("Recherche annulée", "AbortError");
+    const reussies = sources.filter(s => s.status === "fulfilled");
+    if (!reussies.length) throw sources[0].reason;
+
+    const ids = [...new Set(reussies.flatMap(s => s.value).filter(id => /^Q\d+$/.test(id)))].slice(0, 50);
     if (!ids.length) return [];
 
     const details = await getJson(urlApi({
-        action: "wbgetentities", ids: ids.join("|"), props: "claims|labels|descriptions", languages: "fr|en"
-    }), { fetchImpl, signal });
+        action: "wbgetentities", ids: ids.join("|"), props: "claims|labels|descriptions|sitelinks",
+        languages: "fr|en", sitefilter: "frwiki"
+    }), opts);
 
     return ids
         .map(id => details.entities?.[id])
         .filter(estUnJeu)
         .slice(0, limite)
-        .map(e => ({
-            id: e.id,
-            nom: libelle(e) || e.id,
-            description: e.descriptions?.fr?.value || e.descriptions?.en?.value || ""
-        }));
+        .map(e => {
+            const nom = nomFrancais(e) || e.id;
+            const description = e.descriptions?.fr?.value || e.descriptions?.en?.value || "";
+            const nomAnglais = e.labels?.en?.value;
+            // Aide à reconnaître le jeu quand le nom français diffère du nom d'origine
+            const vo = nomAnglais && nomAnglais.toLowerCase() !== nom.toLowerCase() ? `VO : ${nomAnglais}` : "";
+            return { id: e.id, nom, description: [description, vo].filter(Boolean).join(" · ") };
+        });
 }
 
 /* ---------- Analyse (pure) ---------- */
@@ -214,7 +275,7 @@ export function construireFiche(entite, libelles, resumes = {}) {
 
     return {
         wikidataId: entite.id,
-        nom: libelle(entite),
+        nom: nomFrancais(entite),
         joueurs,
         duree: dureesEnMinutes(entite),
         ageMinimal: nombres(entite, P.AGE_MIN).find(n => n > 0 && n < 100) || 0,

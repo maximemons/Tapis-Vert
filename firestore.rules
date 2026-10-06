@@ -4,8 +4,10 @@ rules_version = '2';
 // Le site étant 100 % client (GitHub Pages), ces règles sont la SEULE barrière réelle :
 // tout contrôle fait en JavaScript peut être contourné depuis la console du navigateur.
 //
-// Déploiement : console Firebase > Firestore > Règles, ou `firebase deploy --only firestore:rules`.
-// Tester d'abord dans le simulateur de règles de la console.
+// ⚠ Ce fichier n'est PAS appliqué automatiquement par GitHub. Pour l'activer :
+//   console Firebase > Firestore Database > onglet « Règles » > remplacer tout le contenu
+//   par celui de ce fichier > « Publier ».   (ou : firebase deploy --only firestore:rules)
+// Sans cette étape, la création de liens de visualisation est refusée.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -18,9 +20,12 @@ service cloud.firestore {
     function monEmail() {
       return request.auth.token.email;
     }
-    // Moi + les comptes liés (champ « liens » de mon document utilisateur)
+    // Moi + les comptes liés (champ « liens » de mon document utilisateur).
+    // Robuste : fonctionne même si le document n'existe pas ou si « liens » est absent / mal typé.
     function maFamille() {
-      return get(/databases/$(database)/documents/utilisateurs/$(monEmail())).data.get('liens', []).concat([monEmail()]);
+      let chemin = /databases/$(database)/documents/utilisateurs/$(monEmail());
+      let liens = exists(chemin) ? get(chemin).data.get('liens', []) : [];
+      return (liens is list ? liens : []).concat([monEmail()]);
     }
     function cheminPrive(jeton) {
       return /databases/$(database)/documents/partagesPrives/$(jeton);
@@ -72,8 +77,8 @@ service cloud.firestore {
         && monEmail() in request.resource.data.proprios
         // Impossible de partager les jeux de quelqu'un hors de sa famille
         && maFamille().hasAll(request.resource.data.proprios)
-        && request.resource.data.libelle is string && request.resource.data.libelle.size() <= 60
-        && request.resource.data.titre is string && request.resource.data.titre.size() <= 80;
+        && request.resource.data.libelle is string && request.resource.data.libelle.size() <= 80
+        && request.resource.data.titre is string && request.resource.data.titre.size() <= 120;
       allow update: if false;
       allow delete: if connecte() && monEmail() in resource.data.proprios;
     }

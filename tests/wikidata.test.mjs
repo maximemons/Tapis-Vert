@@ -47,3 +47,45 @@ test("deduireStyles", () => {
   assert.deepEqual(W.deduireStyles(["jeu coopératif"], [2, 2]), ["COOPERATIF", "DUEL"]);
   assert.deepEqual(W.deduireStyles(["Worker Placement", "inconnu"]), ["PLACEMENT_OUVRIERS"]);
 });
+
+test("recherche en français : jeu sans nom français sur Wikidata, trouvé via Wikipédia FR", async () => {
+  const r = await W.rechercherJeux("aventuriers du", { fetchImpl: fauxFetch() });
+  assert.deepEqual(r.map(x => x.id), ["Q4"], "le film homonyme est exclu");
+  assert.equal(r[0].nom, "Les Aventuriers du rail", "nom français affiché");
+  assert.ok(r[0].description.includes("VO : Ticket to Ride"), "nom d'origine rappelé");
+});
+
+test("recherche : mots dans le désordre ou au milieu du titre", async () => {
+  const r = await W.rechercherJeux("rail aventuriers", { fetchImpl: fauxFetch() });
+  assert.deepEqual(r.map(x => x.id), ["Q4"]);
+});
+
+test("recherche : nom d'une autre langue (alias allemand)", async () => {
+  const r = await W.rechercherJeux("Zug um Zug", { fetchImpl: fauxFetch() });
+  assert.equal(r[0]?.nom, "Les Aventuriers du rail");
+});
+
+test("recherche : pas de doublon quand plusieurs sources trouvent le même jeu", async () => {
+  const r = await W.rechercherJeux("Azul", { fetchImpl: fauxFetch() });
+  assert.deepEqual(r.map(x => x.id), ["Q1", "Q3"]);
+});
+
+test("recherche : Wikipédia en panne, Wikidata répond quand même", async () => {
+  const r = await W.rechercherJeux("Azul", { fetchImpl: fauxFetch([], { enPanne: ["wikipedia.org"] }) });
+  assert.deepEqual(r.map(x => x.id), ["Q1", "Q3"]);
+});
+
+test("recherche : toutes les sources en panne = erreur remontée", async () => {
+  await assert.rejects(W.rechercherJeux("Azul", { fetchImpl: fauxFetch([], { enPanne: ["wikipedia.org", "wikidata.org"] }) }));
+});
+
+test("fiche : titre français repris de Wikipédia si Wikidata n'a que l'anglais", async () => {
+  const f = await W.recupererFiche("Q4", { fetchImpl: fauxFetch() });
+  assert.equal(f.nom, "Les Aventuriers du rail");
+  assert.deepEqual(f.joueurs, [2, 5]);
+});
+
+test("titreSansPrecision", () => {
+  assert.equal(W.titreSansPrecision("Azul (jeu)"), "Azul");
+  assert.equal(W.titreSansPrecision("7 Wonders"), "7 Wonders");
+});

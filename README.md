@@ -40,6 +40,8 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
   - Consultables sans compte, sans aucune possibilité de modification
   - Un lien par destinataire (« Mamie », « Collègues »…), avec expiration optionnelle et wishlist au choix
   - Liste des liens existants, révocables à tout moment (effet immédiat)
+  - QR code par lien, affiché à l'écran et téléchargeable en image (avec le titre) pour l'imprimer ou l'envoyer
+  - Diagnostic intégré : si Firebase refuse l'accès, la fenêtre explique pourquoi et comment corriger
   - Données personnelles exclues : emails, nom des emprunteurs, emplacement, date d'achat
 
 ---
@@ -76,6 +78,8 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
 │   ├── partages.js       Création, synchronisation et révocation des liens
 │   ├── wikidata.js       Récupération des infos d'un jeu (Wikidata + Wikipédia)
 │   ├── saisie-auto.js    Autocomplétion du titre dans le formulaire
+│   ├── qrcode.js         QR codes des liens (SVG à l'écran, PNG à télécharger)
+│   └── vendor/qrcode-generator-1.4.4.js   Moteur QR code (MIT, Kazuhiko Arase)
 │   ├── dashboard.js      Tableau de bord
 │   ├── partage.js        Vue lecture seule
 │   └── index.js          Connexion
@@ -112,6 +116,9 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
 Sources : **Wikidata** (joueurs, durée, âge minimal, image, genres et mécaniques, extension, identifiant BoardGameGeek)
 et **Wikipédia** (résumé en français, image de repli). Gratuites, sans clé, appelées directement depuis le navigateur.
 
+- La recherche fonctionne en français : elle interroge en parallèle Wikipédia FR (titres et redirections,
+  y compris mots dans le désordre) et Wikidata (noms français, puis noms et alias de toutes les langues).
+  Le nom français est privilégié, le nom d'origine est rappelé dans la liste (« VO : Ticket to Ride »).
 - Seuls les champs vides sont remplis ; les champs remplis sont surlignés et l'opération peut être annulée.
 - Les genres et mécaniques Wikidata sont traduits en styles de l'application par mots-clés (`REGLES_STYLES` dans `wikidata.js`).
 - La difficulté et la vidéo ne sont pas disponibles dans ces sources.
@@ -123,8 +130,10 @@ et **Wikipédia** (résumé en français, image de repli). Gratuites, sans clé,
 
 ## 🚀 Mise en production
 
-1. **Déployer les règles** `firestore.rules` (console Firebase > Firestore > Règles, ou `firebase deploy --only firestore:rules`).
-   Sans elles, les liens de visualisation ne fonctionnent pas. Les tester d'abord dans le simulateur de la console.
+1. **Publier les règles** `firestore.rules` dans Firebase. ⚠ Pousser le fichier sur GitHub ne suffit pas :
+   console Firebase > Firestore Database > onglet « Règles » > remplacer tout le contenu > « Publier »
+   (ou `firebase deploy --only firestore:rules`). Sans cette étape, la création de liens est refusée ;
+   la fenêtre des liens l'indique et propose un bouton « Revérifier » une fois les règles publiées.
 2. Pousser sur la branche servie par GitHub Pages.
 
 Aucun index composite n'est nécessaire.
@@ -135,7 +144,7 @@ Aucun index composite n'est nécessaire.
 
 ```bash
 npm test                                   # tests unitaires (Node 20+)
-npm install --no-save dompurify@3.1.6      # prérequis e2e
+npm install --no-save dompurify@3.1.6 jsqr@1.4.0 pngjs@7.0.0   # prérequis (décodage des QR codes)
 pip install playwright && playwright install chromium
-python3 tests/e2e/e2e.py                   # 66 vérifications de bout en bout
+python3 tests/e2e/e2e.py                   # 80 vérifications de bout en bout
 ```

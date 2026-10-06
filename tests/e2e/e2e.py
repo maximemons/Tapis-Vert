@@ -75,7 +75,8 @@ with sync_playwright() as p:
     page = ctx.new_page()
     erreurs = []
     page.on("pageerror", lambda e: erreurs.append(str(e)))
-    page.on("console", lambda m: m.type == "error" and "404" not in m.text and erreurs.append(m.text))
+    # Les refus de permission simulés (scénarios de règles Firestore) sont journalisés volontairement
+    page.on("console", lambda m: m.type == "error" and "404" not in m.text and "insufficient permissions" not in m.text and erreurs.append(m.text))
     introuvables = []
     ctx.on("response", lambda r: r.status == 404 and introuvables.append(r.url))
 
@@ -179,6 +180,16 @@ with sync_playwright() as p:
     page.wait_for_selector("#autoInfo.succes")
     check(page.is_checked("#extension") and page.input_value("#joueurs_min") == "1" and page.input_value("#duree_min") == "60", "extension, solo et durée en heures")
 
+    # Nom français absent de Wikidata, retrouvé via Wikipédia FR
+    page.click("#cancelBtn"); page.click("#editCreate")
+    page.type("#titre", "aventuriers du", delay=30)
+    page.wait_for_selector("#suggestions li:has-text('Les Aventuriers du rail')")
+    check("VO : Ticket to Ride" in page.text_content("#suggestions"), "recherche en français, nom d'origine rappelé")
+    page.click("#suggestions li:has-text('Les Aventuriers du rail')")
+    page.wait_for_selector("#autoInfo.succes")
+    check(page.input_value("#titre") == "Les Aventuriers du rail" and page.input_value("#joueurs_max") == "5", "titre français conservé et fiche remplie")
+    page.screenshot(path=CAPTURES + "/07-recherche-fr.png")
+
     # Panne réseau : message utile, pas de plantage
     page.click("#cancelBtn"); page.click("#editCreate")
     check(page.locator("#autoInfo:not([hidden])").count() == 0 and page.locator("#jeuForm .auto-rempli").count() == 0, "statut effacé à la réouverture")
@@ -210,11 +221,60 @@ with sync_playwright() as p:
     page.click("#dlgSurprise button")
     page.select_option("#durationSelect", "")
 
+    # --- Diagnostic : règles Firestore non publiées
+    page.evaluate("localStorage.__regles = 'absentes'")
+    page.reload(); page.wait_for_selector("#grid .card"); page.wait_for_timeout(500)
+    check(page.locator(".toast-erreur").count() == 0, "règles absentes : aucune alerte intempestive au chargement")
+    page.click("#partagesBtn")
+    page.wait_for_selector("#partagesDiagnostic:not([hidden])")
+    diag = page.text_content("#partagesDiagnostic")
+    check("pas encore activés" in diag and "firestore.rules" in diag, "règles absentes : cause expliquée")
+    check(page.get_attribute("#partagesDiagnostic a", "href") == "https://console.firebase.google.com/project/tapis-test/firestore/rules", "lien direct vers les règles du projet")
+    check(page.is_disabled("#creerPartageBtn"), "création désactivée tant que les règles manquent")
+    page.screenshot(path=CAPTURES + "/08-diagnostic.png")
+    page.evaluate("localStorage.removeItem('__regles')")
+    page.click("#partagesDiagnostic button:has-text('Revérifier')")
+    page.wait_for_selector("#partagesDiagnostic", state="hidden")
+    check(page.is_enabled("#creerPartageBtn"), "après publication des règles : « Revérifier » réactive la création")
+
+    # --- Diagnostic : règles publiées mais obsolètes
+    page.evaluate("localStorage.__regles = 'anciennes'")
+    page.fill("#partageLibelle", "Test"); page.click("#creerPartageBtn")
+    page.wait_for_selector("#partagesDiagnostic:not([hidden])")
+    check("Republiez" in page.text_content("#partagesDiagnostic") and "enregistrement du lien" in page.text_content(".toast-erreur"), "règles obsolètes : étape fautive indiquée")
+
+    # --- Échec à mi-chemin : pas de lien fantôme
+    page.evaluate("localStorage.__regles = 'public-refuse'")
+    page.click("#creerPartageBtn")
+    page.wait_for_function("document.querySelector('#creerPartageBtn').textContent === 'Créer le lien'")
+    db = page.evaluate("JSON.parse(localStorage.__fakedb)")
+    check(not any(k.startswith("partages") for k in db), "échec à la publication : tout est annulé, aucun lien fantôme")
+    page.evaluate("localStorage.removeItem('__regles')")
+    page.keyboard.press("Escape")
+    page.reload(); page.wait_for_selector("#grid .card")
+
     # --- Création de liens de visualisation
     page.click("#partagesBtn")
     page.wait_for_selector("#dlgPartages[open] .vide")
+    check(page.locator("#partagesDiagnostic:not([hidden])").count() == 0, "règles OK : pas de diagnostic")
     page.fill("#partageLibelle", "Mamie"); page.check("#partageWishlist"); page.click("#creerPartageBtn")
     page.wait_for_selector("#listePartages .partage")
+
+    # --- QR code du nouveau lien, affiché d'office
+    page.wait_for_selector("#listePartages .qr-panneau:not([hidden]) svg")
+    check(page.get_attribute("#listePartages .partage button:has-text('QR code')", "aria-expanded") == "true", "QR code du nouveau lien affiché directement")
+    with page.expect_download() as dl:
+        page.click("#listePartages .qr-panneau button:has-text('Télécharger')")
+    fichier = CAPTURES + "/qr-telecharge.png"
+    dl.value.save_as(fichier)
+    check(dl.value.suggested_filename == "qr-ludotheque-mamie.png", f"nom du fichier : {dl.value.suggested_filename}")
+    import subprocess
+    lu = json.loads(subprocess.run(["node", os.path.join(ICI, "decoder-qr.mjs"), fichier], capture_output=True, text=True, cwd=ROOT).stdout)
+    lien_affiche = page.input_value("#listePartages .lien")
+    check(lu["texte"] == lien_affiche, f"le QR code téléchargé se scanne vers le bon lien ({lu['largeur']}×{lu['hauteur']} px)")
+    page.screenshot(path=CAPTURES + "/09-qr.png")
+    page.click("#listePartages .partage button:has-text('QR code')")
+    check(page.locator("#listePartages .qr-panneau:not([hidden])").count() == 0, "QR code repliable")
     lien = page.input_value("#listePartages .lien")
     jeton = lien.split("#")[1]
     check(re.fullmatch(r"[A-Za-z0-9_-]{32}", jeton) is not None and "/partage.html#" in lien, "lien généré avec jeton dans le fragment")

@@ -387,7 +387,37 @@ button, select, input, textarea { font: inherit; }
   color: var(--muted);
   background: #faf8f2;
 }
-.partage-expire .partage-lien { justify-content: flex-end; }
+.partage-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.partage-actions .btn-danger { margin-left: auto; }
+
+.qr-panneau {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 6px;
+  background: #faf8f2;
+}
+.qr-image { flex: none; width: 180px; padding: 6px; background: #fff; border: 1px solid #e3ddcc; border-radius: 6px; }
+.qr-image svg { display: block; width: 100%; height: auto; }
+.qr-texte { flex: 1 1 200px; font-size: 14px; line-height: 1.5; }
+.qr-texte p { margin: 0 0 10px; }
+.aide-discrete { color: var(--muted); font-size: 13px; }
+
+.diagnostic {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  border-left: 4px solid var(--danger);
+  background: #fbe9e7;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.diagnostic p { margin: 6px 0; }
+.diagnostic ol { margin: 6px 0 10px; padding-left: 20px; }
+.diagnostic a { color: var(--green); font-weight: 600; }
+.partage-form :disabled { opacity: .55; cursor: not-allowed; }
 
 /* ---------- Notifications ---------- */
 #toasts {

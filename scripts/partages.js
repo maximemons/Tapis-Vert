@@ -13,7 +13,9 @@ import {
     getDocumentsWithWhere, setDocument, updateDocument, deleteDocument
 } from "./firebase-db.js";
 import { COLLECTIONS } from "./records.js";
-import { genererJeton, projeterJeuPourPartage, jeuxDuPartage, differences, estExpire } from "./logic.js";
+import {
+    genererJeton, projeterJeuPourPartage, jeuxDuPartage, differences, estExpire, tronquer, LIMITES_PARTAGE
+} from "./logic.js";
 import { nettoyerHtml } from "./ui.js";
 
 const TAILLE_LOT = 400; // limite Firestore : 500 opérations par batch
@@ -42,7 +44,17 @@ export async function listerPartages(monEmail) {
         .sort((a, b) => (b.creeLe || 0) - (a.creeLe || 0));
 }
 
+/** Étiquette l'étape qui a échoué, pour un diagnostic précis côté interface. */
+function etape(nom, promesse) {
+    return promesse.catch((e) => {
+        e.etape = nom;
+        throw e;
+    });
+}
+
 /**
+ * Crée un lien en trois étapes : partie privée, partie publique, copie des jeux.
+ * En cas d'échec après la première étape, tout est annulé : pas de lien à moitié créé.
  * @param expireDansJours nombre de jours avant expiration, ou null pour « jamais »
  */
 export async function creerPartage({ monEmail, proprios, libelle, titre, inclureWishlist, expireDansJours }, jeux) {
@@ -50,18 +62,25 @@ export async function creerPartage({ monEmail, proprios, libelle, titre, inclure
     const expireLe = expireDansJours
         ? Timestamp.fromMillis(Date.now() + expireDansJours * 24 * 3600 * 1000)
         : null;
+    libelle = tronquer(libelle, LIMITES_PARTAGE.libelle);
+    titre = tronquer(titre, LIMITES_PARTAGE.titre);
 
     // 1. Partie privée d'abord : les règles exigent qu'elle existe pour créer la partie publique.
-    await setDocument(COLLECTIONS.PARTAGES_PRIVES, jeton, {
+    await etape("prive", setDocument(COLLECTIONS.PARTAGES_PRIVES, jeton, {
         proprios, creePar: monEmail, libelle, titre, inclureWishlist, expireLe, creeLe: serverTimestamp()
-    });
-    // 2. Partie publique (sans aucun email).
-    await setDocument(COLLECTIONS.PARTAGES, jeton, {
-        titre, inclureWishlist, expireLe, majLe: serverTimestamp()
-    });
-
+    }));
     const partage = { jeton, proprios, inclureWishlist, libelle, titre, expireLe: versMs(expireLe), creePar: monEmail };
-    await synchroniserPartage(partage, jeux);
+    try {
+        // 2. Partie publique (sans aucun email).
+        await etape("public", setDocument(COLLECTIONS.PARTAGES, jeton, {
+            titre, inclureWishlist, expireLe, majLe: serverTimestamp()
+        }));
+        // 3. Copie épurée des jeux.
+        await etape("copie", synchroniserPartage(partage, jeux));
+    } catch (e) {
+        await revoquerPartage(jeton).catch(() => {}); // nettoyage au mieux
+        throw e;
+    }
     return partage;
 }
 

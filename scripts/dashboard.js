@@ -4,7 +4,7 @@ import { requireUser, logout } from "./firebase-auth.js";
 import { Jeux, COLLECTIONS, DIFFICULTE, STYLES } from "./records.js";
 import {
     construireGroupes, filtreDepuisParams, filtreVersParams, jeuCorrespond,
-    trierParNom, estExpire
+    trierParNom, estExpire, titreParDefaut, slug
 } from "./logic.js";
 import {
     $, el, ouvrirDialog, demander, notifier, afficherGrille, afficherFiche, tirerAuSort,
@@ -14,6 +14,8 @@ import {
     listerPartages, creerPartage, synchroniserTousLesPartages, revoquerPartage, lienDuPartage
 } from "./partages.js";
 import { initSaisieAuto } from "./saisie-auto.js";
+import { qrSvg, qrPng } from "./qrcode.js";
+import { app } from "./firebase-app.js";
 
 /* ---------- État ---------- */
 
@@ -24,7 +26,8 @@ const state = {
     jeux: [],
     filtre: {},
     jeuxAffiches: [],
-    partages: []
+    partages: [],
+    partagesEtat: null
 };
 
 let quill = null;
@@ -63,7 +66,8 @@ async function init() {
 
     // Les partages sont mis à jour en arrière-plan : on récupère aussi les changements
     // faits par les autres membres de la famille depuis la dernière visite.
-    chargerPartages().then(() => synchroniserPartages()).catch(erreur);
+    // Lecture test silencieuse : en cas de problème, le diagnostic s'affiche dans la fenêtre des liens.
+    chargerPartages().then(ok => ok && synchroniserPartages()).catch(console.error);
 }
 
 /* ---------- Affichage ---------- */
@@ -416,17 +420,136 @@ async function sauvegarderFormulaire() {
 
 /* ---------- Liens de visualisation ---------- */
 
+// État de la fonctionnalité, déterminé par une lecture test au chargement :
+//   "ok"               tout fonctionne
+//   "regles-absentes"  Firestore refuse même la lecture : firestore.rules n'a pas été publié
+//   "regles-anciennes" la lecture passe mais la création est refusée : règles publiées obsolètes
+//   "reseau"           Firestore injoignable
+let qrAOuvrir = null;
+
 async function chargerPartages() {
-    state.partages = await listerPartages(state.moi);
+    try {
+        state.partages = await listerPartages(state.moi);
+        if (state.partagesEtat !== "regles-anciennes") state.partagesEtat = "ok";
+    } catch (e) {
+        console.warn("Liens de visualisation indisponibles :", e);
+        state.partages = [];
+        state.partagesEtat = e?.code === "permission-denied" ? "regles-absentes" : "reseau";
+    }
     afficherPartages();
+    return state.partagesEtat === "ok";
+}
+
+const urlConsoleRegles = () => {
+    const projet = app?.options?.projectId;
+    return projet
+        ? `https://console.firebase.google.com/project/${encodeURIComponent(projet)}/firestore/rules`
+        : "https://console.firebase.google.com/";
+};
+
+function afficherDiagnostic() {
+    const zone = $("#partagesDiagnostic");
+    const etat = state.partagesEtat;
+    const bloque = etat === "regles-absentes" || etat === "reseau";
+    $("#formPartage").querySelectorAll("input, select, button").forEach(n => { n.disabled = bloque; });
+
+    if (!etat || etat === "ok") {
+        zone.hidden = true;
+        zone.replaceChildren();
+        return;
+    }
+    const etapes = el("ol", {},
+        el("li", {}, "Ouvrez ", el("a", { href: urlConsoleRegles(), target: "_blank", rel: "noopener" }, "les règles Firestore de votre projet"), " dans la console Firebase."),
+        el("li", {}, "Remplacez tout le contenu par celui du fichier firestore.rules du projet."),
+        el("li", {}, "Cliquez sur « Publier », attendez une minute, puis sur « Revérifier » ci-dessous.")
+    );
+    const reverifier = el("button", { type: "button", class: "btn" }, "Revérifier");
+    reverifier.addEventListener("click", async () => {
+        reverifier.disabled = true;
+        state.partagesEtat = null;
+        const ok = await chargerPartages();
+        if (ok) notifier("Les liens de visualisation sont opérationnels.");
+    });
+
+    const contenus = {
+        "regles-absentes": [
+            el("strong", {}, "Les liens de visualisation ne sont pas encore activés."),
+            el("p", {}, "Firestore refuse l'accès aux liens : les règles de sécurité du projet n'ont pas été mises à jour. Le fichier firestore.rules du dépôt GitHub n'est pas appliqué automatiquement, il faut le publier une fois dans Firebase."),
+            etapes, reverifier
+        ],
+        "regles-anciennes": [
+            el("strong", {}, "Firestore a refusé la création du lien."),
+            el("p", {}, "Les règles publiées dans Firebase ne correspondent pas à la version actuelle du fichier firestore.rules. Republiez-les :"),
+            etapes, reverifier
+        ],
+        reseau: [
+            el("strong", {}, "Impossible de joindre Firestore."),
+            el("p", {}, "Vérifiez votre connexion internet puis réessayez."),
+            reverifier
+        ]
+    };
+    zone.replaceChildren(...contenus[etat]);
+    zone.hidden = false;
 }
 
 const formatDate = (ms) => new Date(ms).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+const icone = (nom) => el("i", { class: `fas fa-${nom}`, "aria-hidden": "true" });
+
+function panneauQr(p, lien) {
+    const panneau = el("div", { class: "qr-panneau", id: `qr-${p.jeton}`, hidden: true });
+    panneau.dataset.lien = lien;
+    return panneau;
+}
+
+function remplirPanneauQr(panneau, p) {
+    if (panneau.childElementCount) return;
+    const lien = panneau.dataset.lien;
+    try {
+        const telecharger = el("button", { type: "button", class: "btn btn-primaire" }, icone("download"), " Télécharger l'image");
+        telecharger.addEventListener("click", () => telechargerQr(p, lien));
+        panneau.append(
+            el("div", { class: "qr-image" }, qrSvg(lien, { libelle: `QR code du lien pour ${p.libelle}` })),
+            el("div", { class: "qr-texte" },
+                el("p", {}, "À scanner avec l'appareil photo d'un téléphone. L'image téléchargée comporte le titre de la ludothèque : idéale à imprimer ou à envoyer."),
+                el("p", { class: "aide-discrete" }, "Le QR code donne exactement le même accès que le lien : révoquer le lien le désactive aussi."),
+                telecharger
+            )
+        );
+    } catch (e) {
+        console.error(e);
+        panneau.append(el("p", {}, "Le QR code n'a pas pu être généré. Rechargez la page puis réessayez."));
+    }
+}
+
+async function telechargerQr(p, lien) {
+    try {
+        const blob = await qrPng(lien, { titre: p.titre || "Ludothèque" });
+        const url = URL.createObjectURL(blob);
+        const a = el("a", { href: url, download: `qr-ludotheque-${slug(p.libelle)}.png`, hidden: true });
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) {
+        erreur(e);
+    }
+}
+
+function basculerQr(bouton, panneau, p) {
+    const ouvrir = panneau.hidden;
+    if (ouvrir) remplirPanneauQr(panneau, p);
+    panneau.hidden = !ouvrir;
+    bouton.setAttribute("aria-expanded", String(ouvrir));
+}
 
 function afficherPartages() {
+    afficherDiagnostic();
     const liste = $("#listePartages");
     if (!state.partages.length) {
-        liste.replaceChildren(el("li", { class: "vide" }, "Aucun lien pour l'instant. Créez-en un ci-dessus pour partager votre ludothèque."));
+        liste.replaceChildren(el("li", { class: "vide" },
+            state.partagesEtat === "ok"
+                ? "Aucun lien pour l'instant. Créez-en un ci-dessus pour partager votre ludothèque."
+                : "Aucun lien disponible."));
         return;
     }
     liste.replaceChildren(...state.partages.map(p => {
@@ -441,6 +564,17 @@ function afficherPartages() {
 
         const champ = el("input", { type: "text", readonly: true, value: lien, "aria-label": `Lien pour ${p.libelle}`, class: "lien" });
         champ.addEventListener("focus", () => champ.select());
+
+        const panneau = panneauQr(p, lien);
+        const boutonQr = el("button", { type: "button", class: "btn", "aria-expanded": "false", "aria-controls": panneau.id }, icone("qrcode"), " QR code");
+        boutonQr.addEventListener("click", () => basculerQr(boutonQr, panneau, p));
+
+        const partager = navigator.share
+            ? el("button", { type: "button", class: "btn", title: "Envoyer le lien (SMS, messagerie…)" }, icone("share-from-square"), " Envoyer")
+            : null;
+        partager?.addEventListener("click", () => {
+            navigator.share({ title: p.titre, text: `${p.titre} : découvre nos jeux de société`, url: lien }).catch(() => {});
+        });
 
         const revoquer = el("button", { type: "button", class: "btn btn-danger" }, expire ? "Supprimer" : "Révoquer");
         let confirmation = null;
@@ -457,26 +591,32 @@ function afficherPartages() {
                 await revoquerPartage(p.jeton);
                 state.partages = state.partages.filter(x => x.jeton !== p.jeton);
                 afficherPartages();
-                notifier(`Lien « ${p.libelle} » révoqué : il ne fonctionne plus.`);
+                notifier(`Lien « ${p.libelle} » révoqué : il ne fonctionne plus, son QR code non plus.`);
             } catch (e) {
                 revoquer.disabled = false;
                 erreur(e);
             }
         });
 
-        return el("li", { class: `partage${expire ? " partage-expire" : ""}` },
+        const item = el("li", { class: `partage${expire ? " partage-expire" : ""}` },
             el("div", { class: "partage-entete" },
                 el("strong", {}, p.libelle || "Sans nom"),
                 el("span", { class: "partage-details" }, details)
             ),
-            el("div", { class: "partage-lien" },
-                expire ? null : champ,
-                expire ? null : el("button", { type: "button", class: "btn", onclick: () => copier(lien) }, el("i", { class: "fas fa-copy", "aria-hidden": "true" }), " Copier"),
-                expire ? null : el("a", { class: "btn", href: lien, target: "_blank", rel: "noopener" }, el("i", { class: "fas fa-eye", "aria-hidden": "true" }), " Voir"),
+            expire ? null : el("div", { class: "partage-lien" }, champ),
+            el("div", { class: "partage-actions" },
+                expire ? null : el("button", { type: "button", class: "btn", onclick: () => copier(lien) }, icone("copy"), " Copier"),
+                expire ? null : el("a", { class: "btn", href: lien, target: "_blank", rel: "noopener" }, icone("eye"), " Voir"),
+                expire ? null : boutonQr,
+                expire ? null : partager,
                 revoquer
-            )
+            ),
+            expire ? null : panneau
         );
+        if (qrAOuvrir === p.jeton && !expire) basculerQr(boutonQr, panneau, p);
+        return item;
     }));
+    qrAOuvrir = null;
 }
 
 async function copier(texte) {
@@ -488,6 +628,16 @@ async function copier(texte) {
     }
 }
 
+function messageErreurCreation(e) {
+    if (e?.code !== "permission-denied") {
+        return "La création du lien a échoué. Vérifiez votre connexion puis réessayez.";
+    }
+    state.partagesEtat = "regles-anciennes";
+    afficherDiagnostic();
+    const etapes = { prive: "enregistrement du lien", public: "publication du lien", copie: "copie des jeux" };
+    return `Création refusée par Firestore (étape : ${etapes[e.etape] || "inconnue"}). Suivez les indications dans la fenêtre.`;
+}
+
 async function soumettrePartage(e) {
     e.preventDefault();
     const libelle = $("#partageLibelle").value.trim();
@@ -497,30 +647,35 @@ async function soumettrePartage(e) {
     }
     const bouton = $("#creerPartageBtn");
     bouton.disabled = true;
+    bouton.textContent = "Création…";
     try {
         const partage = await creerPartage({
             monEmail: state.moi,
             proprios: state.famille.emails,
             libelle,
-            titre: $("#partageTitre").value.trim() || `Ludothèque de ${state.famille.libelle}`,
+            titre: $("#partageTitre").value.trim() || titreParDefaut(state.famille.libelle),
             inclureWishlist: $("#partageWishlist").checked,
             expireDansJours: parseInt($("#partageExpiration").value, 10) || null
         }, state.jeux);
         partage.creeLe = Date.now();
         state.partages.unshift(partage);
+        if (state.partagesEtat === "regles-anciennes") state.partagesEtat = "ok";
         $("#formPartage").reset();
-        $("#partageTitre").value = `Ludothèque de ${state.famille.libelle}`;
+        $("#partageTitre").value = titreParDefaut(state.famille.libelle);
+        qrAOuvrir = partage.jeton; // le QR code du nouveau lien s'affiche directement
         afficherPartages();
         try {
             await navigator.clipboard.writeText(lienDuPartage(partage.jeton));
-            notifier(`Lien « ${libelle} » créé et copié.`);
+            notifier(`Lien « ${partage.libelle} » créé et copié.`);
         } catch {
-            notifier(`Lien « ${libelle} » créé. Utilisez « Copier » pour le partager.`);
+            notifier(`Lien « ${partage.libelle} » créé.`);
         }
     } catch (err) {
-        erreur(err);
+        console.error(err);
+        notifier(messageErreurCreation(err), "erreur");
     } finally {
-        bouton.disabled = false;
+        bouton.disabled = state.partagesEtat === "regles-absentes" || state.partagesEtat === "reseau";
+        bouton.textContent = "Créer le lien";
     }
 }
 
@@ -532,10 +687,10 @@ function brancherEvenements() {
     $("#editCreate").addEventListener("click", () => editer(null));
     $("#surpriseBtn").addEventListener("click", () => tirerAuSort($("#dlgSurprise"), state.jeuxAffiches));
 
-    $("#partageTitre").value = `Ludothèque de ${state.famille.libelle}`;
+    $("#partageTitre").value = titreParDefaut(state.famille.libelle);
     $("#partagesBtn").addEventListener("click", () => {
         ouvrirDialog($("#dlgPartages"));
-        chargerPartages().catch(erreur);
+        chargerPartages();
     });
     $("#dlgPartages [data-fermer]").addEventListener("click", () => $("#dlgPartages").close());
     $("#formPartage").addEventListener("submit", soumettrePartage);

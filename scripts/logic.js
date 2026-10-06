@@ -253,3 +253,22 @@ export function estJetonValide(jeton) {
 export function estExpire(expireLeMs, maintenantMs = Date.now()) {
     return Number.isFinite(expireLeMs) && expireLeMs <= maintenantMs;
 }
+
+/* ---------- Limites des liens de visualisation (identiques à firestore.rules) ---------- */
+
+export const LIMITES_PARTAGE = { libelle: 80, titre: 120 };
+
+export function tronquer(texte, max) {
+    const t = (texte || "").trim();
+    return t.length <= max ? t : `${t.slice(0, max - 1).trimEnd()}…`;
+}
+
+export function titreParDefaut(libelleFamille) {
+    return tronquer(`Ludothèque de ${libelleFamille || "la famille"}`, LIMITES_PARTAGE.titre);
+}
+
+/** Nom de fichier sûr : « Mamie & Papi » -> « mamie-papi » */
+export function slug(texte) {
+    return (texte || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "lien";
+}

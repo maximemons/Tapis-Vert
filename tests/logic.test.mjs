@@ -113,3 +113,15 @@ test("filtreDepuisParams normalise l'ordre des emails", () => {
   const f = L.filtreDepuisParams(new URLSearchParams("ownerFilter=b@x.fr,a@x.fr"));
   assert.equal(f.proprio, "a@x.fr,b@x.fr");
 });
+
+test("titre par défaut borné à la limite des règles Firestore", () => {
+  const long = Array.from({ length: 12 }, (_, i) => `Prénom${i} N.`).join(" & ");
+  const t = L.titreParDefaut(long);
+  assert.ok(t.length <= L.LIMITES_PARTAGE.titre && t.endsWith("…"), `${t.length} caractères`);
+  assert.equal(L.titreParDefaut("Alice M."), "Ludothèque de Alice M.");
+});
+
+test("slug pour les noms de fichiers", () => {
+  assert.equal(L.slug("Mamie & Papi Côté"), "mamie-papi-cote");
+  assert.equal(L.slug("***"), "lien");
+});

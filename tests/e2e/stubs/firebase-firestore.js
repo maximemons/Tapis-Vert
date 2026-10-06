@@ -27,6 +27,20 @@ export function doc(dbOrColl, ...path) {
 export function where(field, op, value) { return { field, op, value }; }
 export function query(coll, ...w) { return { ...coll, wheres: [...(coll.wheres || []), ...w] }; }
 
+// Simulation des règles publiées (localStorage.__regles) :
+//   "absentes"       : aucune règle pour les partages -> tout accès refusé
+//   "anciennes"      : lecture OK, création de partagesPrives refusée
+//   "public-refuse"  : création de la partie publique refusée (test de l'annulation)
+const regles = () => localStorage.getItem("__regles") || "ok";
+const estPartage = (path) => /^partages(Prives)?\//.test(path);
+function checkRegles(op, path, data) {
+  const r = regles();
+  if (r === "absentes" && estPartage(path)) denied();
+  if (r === "anciennes" && op === "set" && path.startsWith("partagesPrives/")) denied();
+  if (r === "public-refuse" && op === "set" && /^partages\/[^/]+$/.test(path)) denied();
+  if (op === "set" && path.startsWith("partagesPrives/") && ((data.titre || "").length > 120 || (data.libelle || "").length > 80)) denied();
+}
+
 function checkPublicRead(path) {
   // Simulation minimale des règles pour un visiteur anonyme
   if (user()) return;
@@ -39,6 +53,7 @@ function checkPublicRead(path) {
 
 export async function getDoc(ref) {
   checkPublicRead(ref.path);
+  if (user()) checkRegles("get", ref.path);
   log("get", ref.path);
   const d = load()[ref.path];
   return { id: ref.id, exists: () => !!d, data: () => d };
@@ -46,6 +61,7 @@ export async function getDoc(ref) {
 export async function getDocs(q) {
   checkPublicRead(q.path + "/x");
   if (!user() && q.path.split("/").length === 1) denied();
+  if (user()) checkRegles("query", q.path + "/x");
   log("query", q.path);
   const db = load();
   const depth = q.path.split("/").length + 1;
@@ -62,9 +78,9 @@ export async function getDocs(q) {
   return { docs };
 }
 function write(fn) { if (!user()) denied(); const db = load(); fn(db); save(db); }
-export async function setDoc(ref, data) { log("set", ref.path); write(db => { db[ref.path] = JSON.parse(enc(data), (k, x) => x && x.__ts ? new Timestamp(x.__ts) : x); }); }
+export async function setDoc(ref, data) { log("set", ref.path); if (user()) checkRegles("set", ref.path, data); write(db => { db[ref.path] = JSON.parse(enc(data), (k, x) => x && x.__ts ? new Timestamp(x.__ts) : x); }); }
 export async function updateDoc(ref, data) { log("update", ref.path); write(db => { db[ref.path] = { ...db[ref.path], ...data }; }); }
-export async function deleteDoc(ref) { log("delete", ref.path); write(db => { delete db[ref.path]; }); }
+export async function deleteDoc(ref) { log("delete", ref.path); if (user()) checkRegles("delete", ref.path); write(db => { delete db[ref.path]; }); }
 export function writeBatch() {
   const ops = [];
   return {
