@@ -1,39 +1,65 @@
+// Modèle de données et constantes. Module pur (aucun import réseau) : testable sous Node.
+
 class Utilisateurs {
-	constructor(email, prenom, nom, acces = [], liens = []) {
-		this.email = email;
+    constructor(email, prenom, nom, acces = [], liens = []) {
+        this.email = email;
         this.prenom = prenom;
         this.nom = nom;
         this.acces = acces;
         this.liens = liens;
-	}
-};
+    }
+}
 
 class Jeux {
-    constructor(proprio, nom, joueurs = [], duree = [], difficulte, styles = [], estExtension = false, estPrete, description, image, video, emplacement, ageMinimal, dateAchat, id, wishlist, note) {
-        this.proprio = proprio;
-        this.nom = nom;
-        this.joueurs = joueurs;
-        this.duree = duree;
-        this.difficulte = difficulte;
-        this.styles = styles;
-        this.estExtension = estExtension;
-        this.estPrete = estPrete;
-        this.description = description;
-        this.image = image;
-        this.video = video;
-        this.emplacement = emplacement;
-        this.ageMinimal = ageMinimal;
-        this.dateAchat = dateAchat;
+    constructor({
+        id, proprio, nom, joueurs = [], duree = [], difficulte = "", styles = [],
+        estExtension = false, estPrete, description = "", image = "", video = "",
+        emplacement = "", ageMinimal = 0, dateAchat = "", wishlist = false, note = -1
+    } = {}) {
         this.id = id;
-        this.wishlist = wishlist;
-        this.note = note;
+        this.proprio = proprio;
+        this.nom = nom ?? "";
+        this.joueurs = Array.isArray(joueurs) ? joueurs.map(Number).filter(Number.isFinite) : [];
+        this.duree = Array.isArray(duree) ? duree.map(Number).filter(Number.isFinite) : [];
+        this.difficulte = difficulte || "";
+        this.styles = Array.isArray(styles) ? styles : [];
+        this.estExtension = estExtension === true;
+        this.estPrete = typeof estPrete === "string" && estPrete.trim() ? estPrete.trim() : undefined;
+        this.description = description || "";
+        this.image = image || "";
+        this.video = video || "";
+        this.emplacement = emplacement || "";
+        this.ageMinimal = Number(ageMinimal) || 0;
+        this.dateAchat = dateAchat || "";
+        this.wishlist = wishlist === true;
+        this.note = Number(note) > 0 ? Number(note) : -1;
+    }
+
+    static fromDoc(doc) {
+        return new Jeux(doc);
+    }
+
+    get estPreteActuellement() {
+        return Boolean(this.estPrete);
+    }
+
+    /** Objet à écrire dans Firestore (sans l'id, sans les champs undefined). */
+    toDoc() {
+        const { id, ...data } = this;
+        return Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined));
     }
 }
 
 const COLLECTIONS = {
     UTILISATEURS: "utilisateurs",
-    JEUX: "jeux"
-}
+    JEUX: "jeux",
+    // Partie publique d'un lien de visualisation (lisible par quiconque connaît le jeton)
+    PARTAGES: "partages",
+    // Partie privée (propriétaires, libellé) : jamais lisible sans être connecté
+    PARTAGES_PRIVES: "partagesPrives",
+    // Sous-collection de PARTAGES contenant la copie épurée des jeux
+    PARTAGES_JEUX: "jeux"
+};
 
 const DIFFICULTE = {
     NIVEAU1: "Très accessible",
@@ -42,7 +68,7 @@ const DIFFICULTE = {
     NIVEAU4: "Exigeant",
     NIVEAU5: "Complexe/Expert",
     NIVEAU6: "Épique"
-}
+};
 
 const STYLES = {
     JEU_4X: "4X (Explore, Expand, Exploit, Exterminate)",
