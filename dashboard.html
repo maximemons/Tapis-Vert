@@ -1,231 +1,275 @@
-<html lang="fr"><head>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Tapis vert</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Tapis Vert</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css">
   <link rel="stylesheet" href="./styles/common.css">
   <link rel="stylesheet" href="./styles/dashboard.css">
-  <link rel="icon" href="https://emojifavicon.com/🎲" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
 </head>
 <body>
   <div class="app">
-    <header>
-      <div class="token">🎲</div>
+    <header class="entete">
+      <div class="token" aria-hidden="true">🎲</div>
       <h1>Sélecteur de jeu</h1>
-      <button class="editButton" id="logout">
-        <i class="fas fa-sign-out"></i>
-      </button>
+      <div class="entete-actions">
+        <button type="button" class="icon-btn" id="partagesBtn" title="Liens de visualisation" aria-label="Liens de visualisation">
+          <i class="fas fa-share-nodes" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="icon-btn icon-btn-danger" id="logout" title="Se déconnecter" aria-label="Se déconnecter">
+          <i class="fas fa-right-from-bracket" aria-hidden="true"></i>
+        </button>
+      </div>
     </header>
-    <div class="editor">
-      <button class="editButton" id="editCreate">
-        <i class="fas fa-plus"></i>
-      </button>
-      <button class="editButton">
-        <a href="#wishlistCount" style="text-decoration:none">✨</a>
-      </button>
+
+    <div class="barre-outils">
+      <button type="button" class="pill" id="editCreate"><i class="fas fa-plus" aria-hidden="true"></i> Ajouter un jeu</button>
+      <a class="pill" href="#wishlist">✨ Wishlist</a>
     </div>
-    <div class="filters">
-      <select id="ownerSelect">
-        <option value="ALL">-- Propriétaire --</option>
-      </select>
-      <select id="styleSelect">
-        <option value="">-- Style --</option>
-      </select>
-      <select id="playersSelect">
-        <option value="">-- Joueurs --</option>
-      </select>
-      <select id="durationSelect" onchange="changeFilter(this)">
-        <option value="">-- Durée --</option>
-        <option value="15">&lt;15 min</option>
-        <option value="15-30">15–30 min</option>
-        <option value="30-45">30–45 min</option>
-        <option value="60">≈1 h</option>
-        <option value="90">≈1 h 30</option>
-        <option value="120">&gt;2 h</option>
-      </select>
-      <select id="difficultySelect">
-        <option value="">-- Difficulté --</option>
-      </select>
+
+    <div class="filters" id="filtres">
+      <select id="ownerSelect" aria-label="Propriétaire"></select>
+      <select id="styleSelect" aria-label="Style"></select>
+      <select id="playersSelect" aria-label="Nombre de joueurs"></select>
+      <select id="durationSelect" aria-label="Durée"></select>
+      <select id="difficultySelect" aria-label="Difficulté"></select>
     </div>
-    
-    <div id="resultsCount"></div>
+
+    <p id="resultsCount" class="compteur">Chargement de la ludothèque…</p>
     <div class="grid" id="grid"></div>
-    <button class="surprise" id="surpriseBtn">Surprends-moi 🎲</button>
-    <div id="wishlistCount"><b>✨ Wishlist - <span id="wishlistCountSpan">0</span> jeu(x) trouvé(s) ✨</b><span style="float: right;">(ne prend pas en compte les filtres)</span></div>
-    <div class="grid" id="wishlistGrid"></div>
+    <button type="button" class="surprise" id="surpriseBtn">Surprends-moi 🎲</button>
+
+    <section id="wishlist" class="wishlist">
+      <h2>✨ Wishlist <span class="compteur-inline" id="wishlistCount"></span></h2>
+      <p class="aide">Les filtres de style, joueurs, durée et difficulté ne s'appliquent pas à la wishlist.</p>
+      <div class="grid" id="wishlistGrid"></div>
+    </section>
   </div>
-  
-  <div id="modal">
-    <div id="modal-content">
-      <div id="modal-delete">
-        <h2>Es-tu sûr de vouloir supprimer ce jeu ?</h2>
-        <button id="delNon">Non</button>
-        <button id="delOui">Oui</button>
+
+  <!-- Fiche d'un jeu (contenu généré) -->
+  <dialog id="dlgFiche" class="dlg dlg-large" aria-label="Fiche du jeu"></dialog>
+
+  <!-- Tirage au sort -->
+  <dialog id="dlgSurprise" class="dlg">
+    <form method="dialog" class="centre">
+      <h2 class="surprise-titre"></h2>
+      <div class="surprise-jeu"></div>
+      <button value="ok" class="btn btn-primaire">C'est noté !</button>
+    </form>
+  </dialog>
+
+  <!-- Confirmation de suppression -->
+  <dialog id="dlgSuppression" class="dlg">
+    <form method="dialog" class="centre">
+      <h2>Supprimer « <span class="nom-jeu"></span> » ?</h2>
+      <p>Cette action est définitive.</p>
+      <div class="actions">
+        <button value="non" class="btn">Annuler</button>
+        <button value="oui" class="btn btn-danger">Supprimer</button>
       </div>
-      <div id="modal-lent">
-        <h2>A qui veux-tu préter ce jeu ?</h2>
-        <input type="text" style="margin-bottom:15px; width:80%;" id="renter"/><br/>
-        <button id="lentNon">Annuler</button>
-        <button id="lentOui">Valider</button>
+    </form>
+  </dialog>
+
+  <!-- Prêt -->
+  <dialog id="dlgPret" class="dlg">
+    <form method="dialog" class="centre" id="formPret">
+      <h2>À qui prêtes-tu « <span class="nom-jeu"></span> » ?</h2>
+      <input type="text" id="emprunteur" autocomplete="off" maxlength="80" aria-label="Nom de l'emprunteur">
+      <div class="actions">
+        <button value="non" class="btn" formnovalidate>Annuler</button>
+        <button value="oui" class="btn btn-primaire">Prêter</button>
       </div>
-      <div id="modal-back-lent">
-        <h2>Ce jeu a-t-il bien été rendu ?</h2>
-        <button id="backLentNon">Non</button>
-        <button id="backLentOui">Oui</button>
+    </form>
+  </dialog>
+
+  <!-- Retour de prêt -->
+  <dialog id="dlgRetour" class="dlg">
+    <form method="dialog" class="centre">
+      <h2>« <span class="nom-jeu"></span> » a-t-il été rendu ?</h2>
+      <p class="emprunteur-actuel"></p>
+      <div class="actions">
+        <button value="non" class="btn">Pas encore</button>
+        <button value="oui" class="btn btn-primaire">Oui, il est rendu</button>
       </div>
-      <div id="modal-bought">
-        <h2>Avez vous bien acheté ou reçu ce jeu ?</h2>
-        <p>A quelle date ?</p>
-        <input type="date" id="date_achat_2" name="date_achat"><br/><br/>
-        <button id="boughtNon">Annuler</button>
-        <button id="boughtOui">Valider</button>
+    </form>
+  </dialog>
+
+  <!-- Achat d'un jeu de la wishlist -->
+  <dialog id="dlgAchat" class="dlg">
+    <form method="dialog" class="centre">
+      <h2>« <span class="nom-jeu"></span> » a été acheté ou reçu ?</h2>
+      <label for="dateAchatWishlist">Date</label>
+      <input type="date" id="dateAchatWishlist">
+      <div class="actions">
+        <button value="non" class="btn">Annuler</button>
+        <button value="oui" class="btn btn-primaire">Ajouter à la ludothèque</button>
       </div>
-      <div id="modal-random"></div>
-      <div id="modal-create">
-        <div class="modal-content" id="modal-content">
-          <div class="modal-body">
-            <form id="jeuForm">
-              <!-- Infos de base -->
-              <div class="form-section">
-                <h2>Infos de base</h2>
-                <div class="form-group">
-                  <label for="titre" class="required">Titre</label>
-                  <input type="text" id="titre" name="titre" required>
-                  <div id="titreError" class="error-message">Le titre est obligatoire.</div>
-                </div>
-                <div class="form-group">
-                  <label for="image">Image (lien)<button id="searchImageBtn"><i class="fas fa-search-plus"></i></button></label>
-                  <input type="url" id="image" name="image">
-                </div>
-                <div class="two-columns">
-                  <div class="form-group">
-                    <label for="joueurs_min" class="required">Nombre de joueurs (min)</label>
-                    <input type="number" id="joueurs_min" name="joueurs_min" min="1" required>
-                    <div id="joueursMinError" class="error-message">Le nombre de joueurs minimum est obligatoire.</div>
-                  </div>
-                  <div class="form-group">
-                    <label for="joueurs_max">Nombre de joueurs (max)</label>
-                    <input type="number" id="joueurs_max" name="joueurs_max" min="1">
-                  </div>
-                </div>
-                <div class="two-columns">
-                  <div class="form-group">
-                    <label for="duree_min">Durée (min en minutes)</label>
-                    <input type="number" id="duree_min" name="duree_min" min="1">
-                  </div>
-                  <div class="form-group">
-                    <label for="duree_max">Durée (max en minutes)</label>
-                    <input type="number" id="duree_max" name="duree_max" min="1">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="difficulte">Difficulté</label>
-                  <select id="difficulte" name="difficulte">
-                    <option value="">-- Choisir --</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="style">Style</label>
-                  <select id="style" name="style" multiple>
-                    <option value="">-- Choisir --</option>
-                  </select>
-                  <small>Maintenez Ctrl/Cmd enfoncé pour sélectionner plusieurs styles.</small>
-                </div>
-                <div class="form-group checkbox-group">
-                  <input type="checkbox" id="extension" name="extension">
-                  <label for="extension">Est une extension</label>
-                </div>
-                <div class="form-group">
-                  <label for="age_min">Âge minimal</label>
-                  <input type="number" id="age_min" name="age_min" min="3">
-                </div>
-                <div class="form-group">
-                  <label for="date_achat">Date d'achat</label>
-                  <input type="date" id="date_achat" name="date_achat">
-                </div>
-                <div class="form-group checkbox-group">
-                  <input type="checkbox" id="wishlist" name="wishlist">
-                  <label for="wishlist">Pas acheté, ajouter a la wishlist</label>
-                </div>
-              </div>
-              
-              <!-- Infos complémentaires -->
-              <div class="form-section">
-                <h2>Infos complémentaires</h2>
-                <div class="form-group">
-                  <label for="description">Description</label>
-                  <div id="editor"></div>
-                  <input type="hidden" id="description" name="description">
-                </div>
-                <div class="form-group">
-                  <label for="video">Vidéo de présentation (lien YouTube)</label>
-                  <input type="url" id="video" name="video" placeholder="https://youtube.com/...">
-                </div>
-                <div class="form-group">
-                  <label for="emplacement">Emplacement</label>
-                  <input type="text" id="emplacement" name="emplacement">
-                </div>
-                <div class="form-group">
-                  <label for="note">Avis personnel</label>
-                  <select id="note" name="note">
-                    <option value="-1">-- Choisir --</option>
-                    <option value="1">⭐</option>
-                    <option value="2">⭐⭐</option>
-                    <option value="3">⭐⭐⭐</option>
-                    <option value="4">⭐⭐⭐⭐</option>
-                    <option value="5">⭐⭐⭐⭐⭐</option>
-                  </select>
-                </div>
-              </div>
-            </form>
+    </form>
+  </dialog>
+
+  <!-- Création / édition -->
+  <dialog id="dlgJeu" class="dlg dlg-large" aria-labelledby="dlgJeuTitre">
+    <form id="jeuForm" novalidate>
+      <div class="modal-body">
+        <h2 id="dlgJeuTitre">Ajouter un jeu</h2>
+        <fieldset class="form-section">
+          <legend>Infos de base</legend>
+          <div class="form-group">
+            <label for="titre" class="required">Titre</label>
+            <div class="combo">
+              <input type="text" id="titre" required maxlength="150" placeholder="Commencez à taper le nom du jeu…">
+              <ul id="suggestions" class="suggestions" role="listbox" aria-label="Jeux trouvés" hidden></ul>
+            </div>
+            <small>Choisissez un jeu dans la liste pour remplir automatiquement les autres champs.</small>
+            <div id="titreError" class="error-message">Le titre est obligatoire.</div>
+            <div id="autoInfo" class="auto-info" role="status" aria-live="polite" hidden></div>
           </div>
-          <div class="modal-footer">
-            <button type="button" id="cancelBtn">Annuler</button>
-            <button type="button" id="saveBtn">Enregistrer</button>
+          <div class="form-group">
+            <label for="image">Image (lien)</label>
+            <div class="champ-image">
+              <input type="url" id="image" placeholder="https://…">
+              <img id="imageApercu" alt="Aperçu de l'image" hidden referrerpolicy="no-referrer">
+            </div>
+          </div>
+          <div class="two-columns">
+            <div class="form-group">
+              <label for="joueurs_min" class="required">Joueurs (min)</label>
+              <input type="number" id="joueurs_min" min="1" max="99" required>
+              <div id="joueursMinError" class="error-message">Le nombre de joueurs minimum est obligatoire.</div>
+            </div>
+            <div class="form-group">
+              <label for="joueurs_max">Joueurs (max)</label>
+              <input type="number" id="joueurs_max" min="1" max="99">
+            </div>
+          </div>
+          <div class="two-columns">
+            <div class="form-group">
+              <label for="duree_min">Durée min (minutes)</label>
+              <input type="number" id="duree_min" min="1">
+            </div>
+            <div class="form-group">
+              <label for="duree_max">Durée max (minutes)</label>
+              <input type="number" id="duree_max" min="1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="difficulte">Difficulté</label>
+            <select id="difficulte"><option value="">-- Choisir --</option></select>
+          </div>
+          <div class="form-group">
+            <label for="style">Style</label>
+            <select id="style" multiple size="6"></select>
+            <div id="stylesChoisis" class="styles-choisis" aria-live="polite"></div>
+            <small>Maintenez Ctrl/Cmd enfoncé pour sélectionner plusieurs styles.</small>
+          </div>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="extension">
+            <label for="extension">Est une extension</label>
+          </div>
+          <div class="two-columns">
+            <div class="form-group">
+              <label for="age_min">Âge minimal</label>
+              <input type="number" id="age_min" min="0" max="99">
+            </div>
+            <div class="form-group">
+              <label for="date_achat">Date d'achat</label>
+              <input type="date" id="date_achat">
+            </div>
+          </div>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="wishlistInput">
+            <label for="wishlistInput">Pas encore acheté : ajouter à la wishlist</label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Infos complémentaires</legend>
+          <div class="form-group">
+            <label id="descriptionLabel">Description</label>
+            <div id="editor" aria-labelledby="descriptionLabel"></div>
+          </div>
+          <div class="form-group">
+            <label for="video">Vidéo de présentation (lien YouTube)</label>
+            <input type="url" id="video" placeholder="https://youtube.com/…">
+          </div>
+          <div class="form-group">
+            <label for="emplacement">Emplacement</label>
+            <input type="text" id="emplacement" maxlength="120">
+            <small>Reste privé : n'apparaît jamais dans les liens de visualisation.</small>
+          </div>
+          <div class="form-group">
+            <label for="note">Avis personnel</label>
+            <select id="note">
+              <option value="-1">-- Choisir --</option>
+              <option value="1">⭐</option>
+              <option value="2">⭐⭐</option>
+              <option value="3">⭐⭐⭐</option>
+              <option value="4">⭐⭐⭐⭐</option>
+              <option value="5">⭐⭐⭐⭐⭐</option>
+            </select>
+          </div>
+        </fieldset>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" id="cancelBtn">Annuler</button>
+        <button type="submit" class="btn btn-primaire" id="saveBtn">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Liens de visualisation (lecture seule) -->
+  <dialog id="dlgPartages" class="dlg dlg-large" aria-labelledby="dlgPartagesTitre">
+    <div class="modal-body">
+      <div class="fiche-entete">
+        <h2 id="dlgPartagesTitre">Liens de visualisation</h2>
+        <button type="button" class="modal-close" aria-label="Fermer" data-fermer>×</button>
+      </div>
+      <p class="aide">
+        Toute personne qui possède un lien voit vos jeux sans pouvoir rien modifier, et sans compte.
+        Ne sont jamais partagés : vos adresses email, le nom des emprunteurs, l'emplacement et la date d'achat.
+        Révoquer un lien le rend inutilisable immédiatement.
+      </p>
+
+      <form id="formPartage" class="form-section partage-form" novalidate>
+        <div class="two-columns">
+          <div class="form-group">
+            <label for="partageLibelle" class="required">Pour qui ?</label>
+            <input type="text" id="partageLibelle" maxlength="60" placeholder="Ex. : Mamie, collègues…" required>
+            <small>Visible uniquement par vous, pour retrouver le lien.</small>
+          </div>
+          <div class="form-group">
+            <label for="partageTitre">Titre affiché</label>
+            <input type="text" id="partageTitre" maxlength="80">
           </div>
         </div>
-      </div>
-      <div id="modal-show-game">	
-        <button class="modal-close" id="modal-show-game-close-cross">&times;</button>
-        <div class="modal-header">
-          <h2 class="modal-title" id="modal-show-game-title"></h2>
-        </div>
-        <div class="modal-content">
-          <img id="modal-show-game-image" src=""class="game-cover">
-          <div class="game-meta">
-            <div class="meta-item">
-              <div class="meta-label">Joueurs</div>
-              <div class="meta-value" id="modal-show-game-joueurs"></div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">Durée</div>
-              <div class="meta-value" id="modal-show-game-duree"></div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">Difficulté</div>
-              <div class="meta-value" id="modal-show-game-difficulte"></div>
-            </div>
+        <div class="two-columns">
+          <div class="form-group">
+            <label for="partageExpiration">Expiration</label>
+            <select id="partageExpiration">
+              <option value="">Jamais</option>
+              <option value="7">Dans 7 jours</option>
+              <option value="30" selected>Dans 30 jours</option>
+              <option value="90">Dans 3 mois</option>
+              <option value="365">Dans 1 an</option>
+            </select>
           </div>
-          <div class="game-meta">
-            <div class="meta-item">
-              <div class="meta-label">Style</div>
-              <div class="meta-value" id="modal-show-game-styles"></div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">Âge min.</div>
-              <div class="meta-value" id="modal-show-game-age-min"></div>
-            </div>
+          <div class="form-group checkbox-group partage-wishlist">
+            <input type="checkbox" id="partageWishlist">
+            <label for="partageWishlist">Inclure la wishlist</label>
           </div>
-          <div class="meta-label">Description</div>
-          <p class="game-description" id="modal-show-game-description"></p>
-          <iframe id="modal-show-game-video" class="game-video"></iframe>
-          <p class="game-location" id="modal-show-game-emplacement"></p>
         </div>
-      </div>
+        <button type="submit" class="btn btn-primaire" id="creerPartageBtn">Créer le lien</button>
+      </form>
+
+      <h3 class="liste-titre">Liens existants</h3>
+      <ul id="listePartages" class="liste-partages"></ul>
     </div>
-  </div>
-  
+  </dialog>
+
   <script type="module" src="./scripts/dashboard.js"></script>
-  
-</body></html>
+</body>
+</html>
