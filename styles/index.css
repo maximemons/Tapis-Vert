@@ -107,3 +107,11 @@ button:hover {
 .egg:focus {
   box-shadow: 0 0 0 4px rgba(34, 170, 34, 0.2);
 }
+.login-container .token {
+  margin: 0 auto;
+}
+
+#loginBtn:disabled {
+  opacity: .6;
+  cursor: wait;
+}
