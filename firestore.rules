@@ -1,0 +1,102 @@
+rules_version = '2';
+
+// Règles de sécurité Tapis-Vert.
+// Le site étant 100 % client (GitHub Pages), ces règles sont la SEULE barrière réelle :
+// tout contrôle fait en JavaScript peut être contourné depuis la console du navigateur.
+//
+// Déploiement : console Firebase > Firestore > Règles, ou `firebase deploy --only firestore:rules`.
+// Tester d'abord dans le simulateur de règles de la console.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------- Fonctions utilitaires ---------- */
+
+    function connecte() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+    function monEmail() {
+      return request.auth.token.email;
+    }
+    // Moi + les comptes liés (champ « liens » de mon document utilisateur)
+    function maFamille() {
+      return get(/databases/$(database)/documents/utilisateurs/$(monEmail())).data.get('liens', []).concat([monEmail()]);
+    }
+    function cheminPrive(jeton) {
+      return /databases/$(database)/documents/partagesPrives/$(jeton);
+    }
+    function cheminPublic(jeton) {
+      return /databases/$(database)/documents/partages/$(jeton);
+    }
+    function estProprioPartage(jeton) {
+      return connecte()
+        && exists(cheminPrive(jeton))
+        && monEmail() in get(cheminPrive(jeton)).data.proprios;
+    }
+    function nonExpire(data) {
+      return data.expireLe == null || data.expireLe > request.time;
+    }
+    function jetonValide(jeton) {
+      return jeton.matches('^[A-Za-z0-9_-]{32,64}$');
+    }
+
+    /* ---------- Utilisateurs ---------- */
+    // Lus par le tableau de bord pour construire la liste des propriétaires.
+    // Administrés uniquement depuis la console Firebase.
+    match /utilisateurs/{email} {
+      allow read: if connecte();
+      allow write: if false;
+    }
+
+    /* ---------- Jeux ---------- */
+    match /jeux/{jeuId} {
+      // À RESTREINDRE si besoin selon le champ « acces » (la logique actuelle
+      // d'accès n'est appliquée que côté client).
+      allow read: if connecte();
+      // On ne peut créer / modifier / supprimer que les jeux de sa famille,
+      // et une modification ne peut pas changer le propriétaire.
+      allow create: if connecte() && request.resource.data.proprio in maFamille();
+      allow update: if connecte()
+        && resource.data.proprio in maFamille()
+        && request.resource.data.proprio == resource.data.proprio;
+      allow delete: if connecte() && resource.data.proprio in maFamille();
+    }
+
+    /* ---------- Liens de visualisation : partie privée ---------- */
+    match /partagesPrives/{jeton} {
+      allow read: if connecte() && monEmail() in resource.data.proprios;
+      allow create: if connecte()
+        && jetonValide(jeton)
+        && request.resource.data.keys().hasOnly(['proprios', 'creePar', 'libelle', 'titre', 'inclureWishlist', 'expireLe', 'creeLe'])
+        && request.resource.data.creePar == monEmail()
+        && monEmail() in request.resource.data.proprios
+        // Impossible de partager les jeux de quelqu'un hors de sa famille
+        && maFamille().hasAll(request.resource.data.proprios)
+        && request.resource.data.libelle is string && request.resource.data.libelle.size() <= 60
+        && request.resource.data.titre is string && request.resource.data.titre.size() <= 80;
+      allow update: if false;
+      allow delete: if connecte() && monEmail() in resource.data.proprios;
+    }
+
+    /* ---------- Liens de visualisation : partie publique ---------- */
+    match /partages/{jeton} {
+      // Lecture sans compte si l'on connaît le jeton et que le lien n'a pas expiré.
+      allow get: if nonExpire(resource.data) || estProprioPartage(jeton);
+      // Interdit d'énumérer les jetons existants.
+      allow list: if false;
+      allow create: if estProprioPartage(jeton)
+        && request.resource.data.keys().hasOnly(['titre', 'inclureWishlist', 'expireLe', 'majLe']);
+      allow update: if estProprioPartage(jeton)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['majLe']);
+      // Révocation : supprimer ce document coupe immédiatement l'accès aux jeux ci-dessous.
+      allow delete: if estProprioPartage(jeton);
+
+      // Copie épurée des jeux (sans email, emprunteur, emplacement ni date d'achat)
+      match /jeux/{jeuId} {
+        allow read: if estProprioPartage(jeton)
+          || (exists(cheminPublic(jeton)) && nonExpire(get(cheminPublic(jeton)).data));
+        allow write: if estProprioPartage(jeton);
+      }
+    }
+  }
+}
