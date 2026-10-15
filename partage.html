@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Les images des jeux sont hébergées ailleurs : on ne transmet pas l'adresse de cette page -->
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Ludothèque – Tapis Vert</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+  <link rel="stylesheet" href="./styles/common.css">
+  <link rel="stylesheet" href="./styles/dashboard.css">
+</head>
+<body class="lecture-seule">
+  <div class="app">
+    <header class="entete">
+      <div class="token" aria-hidden="true">🎲</div>
+      <h1 id="titre">Ludothèque</h1>
+      <span class="badge-lecture" title="Vous consultez cette ludothèque sans pouvoir la modifier">Lecture seule</span>
+    </header>
+
+    <div id="contenu" hidden>
+      <div class="filters" id="filtres">
+        <select id="styleSelect" aria-label="Style"></select>
+        <select id="playersSelect" aria-label="Nombre de joueurs"></select>
+        <select id="durationSelect" aria-label="Durée"></select>
+        <select id="difficultySelect" aria-label="Difficulté"></select>
+      </div>
+      <p id="resultsCount" class="compteur"></p>
+      <div class="grid" id="grid"></div>
+      <button type="button" class="surprise" id="surpriseBtn">Surprends-moi 🎲</button>
+
+      <section id="wishlist" class="wishlist" hidden>
+        <h2>✨ Wishlist <span class="compteur-inline" id="wishlistCount"></span></h2>
+        <p class="aide">Les jeux qui font envie : une idée de cadeau ?</p>
+        <div class="grid" id="wishlistGrid"></div>
+      </section>
+    </div>
+
+    <div id="etat" class="etat" role="status">Chargement de la ludothèque…</div>
+    <p class="pied">Mis à jour <span id="majLe">récemment</span>.</p>
+  </div>
+
+  <dialog id="dlgFiche" class="dlg dlg-large" aria-label="Fiche du jeu"></dialog>
+  <dialog id="dlgSurprise" class="dlg">
+    <form method="dialog" class="centre">
+      <h2 class="surprise-titre"></h2>
+      <div class="surprise-jeu"></div>
+      <button value="ok" class="btn btn-primaire">C'est noté !</button>
+    </form>
+  </dialog>
+
+  <script type="module" src="./scripts/partage.js"></script>
+</body>
+</html>
