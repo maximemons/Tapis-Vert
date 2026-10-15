@@ -4,23 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connexion - Tapis Vert</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
     <link rel="stylesheet" href="styles/common.css"/>
     <link rel="stylesheet" href="styles/index.css"/>
-    <link rel="icon" href="https://emojifavicon.com/🎲" />
 </head>
 <body>
-    <div class="login-container app">
-        <center>
-            <div class="token">🎲</div>
-        </center>
-        <h1 id="myEgg" class="egg">Tapis Vert</h1>
-        <div id="error" class="error"></div>
-        <div id="success" class="success"></div>
-        <input type="email" id="email" placeholder="Email" />
-        <input type="password" id="password" placeholder="Mot de passe" />
-        <button id="loginBtn">Se connecter</button>
-		<a id="forgetPwd" href="">Mot de passe oublié ?</a>
-    </div>
+    <main class="login-container app">
+        <div class="token" aria-hidden="true">🎲</div>
+        <h1 id="myEgg" class="egg" tabindex="0">Tapis Vert</h1>
+        <div id="error" class="error" role="alert"></div>
+        <div id="success" class="success" role="status"></div>
+        <form id="loginForm" novalidate>
+            <input type="email" id="email" placeholder="Email" autocomplete="username" aria-label="Email" required />
+            <input type="password" id="password" placeholder="Mot de passe" autocomplete="current-password" aria-label="Mot de passe" required />
+            <button type="submit" id="loginBtn">Se connecter</button>
+        </form>
+        <a id="forgetPwd" href="#">Mot de passe oublié ?</a>
+    </main>
 
     <script type="module" src="./scripts/index.js"></script>
 </body>
