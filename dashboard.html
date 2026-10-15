@@ -1,275 +1,102 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="referrer" content="strict-origin-when-cross-origin">
-  <title>Tapis Vert</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css">
-  <link rel="stylesheet" href="./styles/common.css">
-  <link rel="stylesheet" href="./styles/dashboard.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 – Allez en prison !</title>
+    <style>
+        body {
+            font-family: 'Bebas Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #1e3d59;
+        }
+        .error404 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 20px;
+        }
+        .number4 {
+            font-size: 4em;
+            color: #d4af37;
+            text-shadow: 2px 2px 0px #1e3d59;
+            font-weight: bold;
+        }
+        .prison-container {
+            background-color: #F8F8F8;
+            border: 6px solid #d4af37;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            max-width: 600px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+        h2 {
+            font-size: 2.5em;
+            color: #1e3d59;
+            margin-top: 0;
+        }
+        p {
+            font-size: 1.3em;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            font-family: 'Arial', sans-serif;
+        }
+        .chance-card {
+            border: 3px solid #1e3d59;
+            background-color: #FFD700;
+            color: #1e3d59;
+            padding: 15px;
+            margin: 20px auto;
+            font-weight: bold;
+            font-style: italic;
+            max-width: 80%;
+        }
+        .button {
+            display: inline-block;
+            background-color: #d4af37;
+            color: #1e3d59;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 1.3em;
+            margin: 10px;
+            font-weight: bold;
+            border: 2px solid #1e3d59;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background-color: #FFD700;
+            transform: scale(1.05);
+        }
+        .monopoly-image {
+            width: 150px;
+            height: 150px;
+            margin:15px;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app">
-    <header class="entete">
-      <div class="token" aria-hidden="true">🎲</div>
-      <h1>Sélecteur de jeu</h1>
-      <div class="entete-actions">
-        <button type="button" class="icon-btn" id="partagesBtn" title="Liens de visualisation" aria-label="Liens de visualisation">
-          <i class="fas fa-share-nodes" aria-hidden="true"></i>
-        </button>
-        <button type="button" class="icon-btn icon-btn-danger" id="logout" title="Se déconnecter" aria-label="Se déconnecter">
-          <i class="fas fa-right-from-bracket" aria-hidden="true"></i>
-        </button>
-      </div>
-    </header>
-
-    <div class="barre-outils">
-      <button type="button" class="pill" id="editCreate"><i class="fas fa-plus" aria-hidden="true"></i> Ajouter un jeu</button>
-      <a class="pill" href="#wishlist">✨ Wishlist</a>
-    </div>
-
-    <div class="filters" id="filtres">
-      <select id="ownerSelect" aria-label="Propriétaire"></select>
-      <select id="styleSelect" aria-label="Style"></select>
-      <select id="playersSelect" aria-label="Nombre de joueurs"></select>
-      <select id="durationSelect" aria-label="Durée"></select>
-      <select id="difficultySelect" aria-label="Difficulté"></select>
-    </div>
-
-    <p id="resultsCount" class="compteur">Chargement de la ludothèque…</p>
-    <div class="grid" id="grid"></div>
-    <button type="button" class="surprise" id="surpriseBtn">Surprends-moi 🎲</button>
-
-    <section id="wishlist" class="wishlist">
-      <h2>✨ Wishlist <span class="compteur-inline" id="wishlistCount"></span></h2>
-      <p class="aide">Les filtres de style, joueurs, durée et difficulté ne s'appliquent pas à la wishlist.</p>
-      <div class="grid" id="wishlistGrid"></div>
-    </section>
-  </div>
-
-  <!-- Fiche d'un jeu (contenu généré) -->
-  <dialog id="dlgFiche" class="dlg dlg-large" aria-label="Fiche du jeu"></dialog>
-
-  <!-- Tirage au sort -->
-  <dialog id="dlgSurprise" class="dlg">
-    <form method="dialog" class="centre">
-      <h2 class="surprise-titre"></h2>
-      <div class="surprise-jeu"></div>
-      <button value="ok" class="btn btn-primaire">C'est noté !</button>
-    </form>
-  </dialog>
-
-  <!-- Confirmation de suppression -->
-  <dialog id="dlgSuppression" class="dlg">
-    <form method="dialog" class="centre">
-      <h2>Supprimer « <span class="nom-jeu"></span> » ?</h2>
-      <p>Cette action est définitive.</p>
-      <div class="actions">
-        <button value="non" class="btn">Annuler</button>
-        <button value="oui" class="btn btn-danger">Supprimer</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Prêt -->
-  <dialog id="dlgPret" class="dlg">
-    <form method="dialog" class="centre" id="formPret">
-      <h2>À qui prêtes-tu « <span class="nom-jeu"></span> » ?</h2>
-      <input type="text" id="emprunteur" autocomplete="off" maxlength="80" aria-label="Nom de l'emprunteur">
-      <div class="actions">
-        <button value="non" class="btn" formnovalidate>Annuler</button>
-        <button value="oui" class="btn btn-primaire">Prêter</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Retour de prêt -->
-  <dialog id="dlgRetour" class="dlg">
-    <form method="dialog" class="centre">
-      <h2>« <span class="nom-jeu"></span> » a-t-il été rendu ?</h2>
-      <p class="emprunteur-actuel"></p>
-      <div class="actions">
-        <button value="non" class="btn">Pas encore</button>
-        <button value="oui" class="btn btn-primaire">Oui, il est rendu</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Achat d'un jeu de la wishlist -->
-  <dialog id="dlgAchat" class="dlg">
-    <form method="dialog" class="centre">
-      <h2>« <span class="nom-jeu"></span> » a été acheté ou reçu ?</h2>
-      <label for="dateAchatWishlist">Date</label>
-      <input type="date" id="dateAchatWishlist">
-      <div class="actions">
-        <button value="non" class="btn">Annuler</button>
-        <button value="oui" class="btn btn-primaire">Ajouter à la ludothèque</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Création / édition -->
-  <dialog id="dlgJeu" class="dlg dlg-large" aria-labelledby="dlgJeuTitre">
-    <form id="jeuForm" novalidate>
-      <div class="modal-body">
-        <h2 id="dlgJeuTitre">Ajouter un jeu</h2>
-        <fieldset class="form-section">
-          <legend>Infos de base</legend>
-          <div class="form-group">
-            <label for="titre" class="required">Titre</label>
-            <div class="combo">
-              <input type="text" id="titre" required maxlength="150" placeholder="Commencez à taper le nom du jeu…">
-              <ul id="suggestions" class="suggestions" role="listbox" aria-label="Jeux trouvés" hidden></ul>
-            </div>
-            <small>Choisissez un jeu dans la liste pour remplir automatiquement les autres champs.</small>
-            <div id="titreError" class="error-message">Le titre est obligatoire.</div>
-            <div id="autoInfo" class="auto-info" role="status" aria-live="polite" hidden></div>
-          </div>
-          <div class="form-group">
-            <label for="image">Image (lien)</label>
-            <div class="champ-image">
-              <input type="url" id="image" placeholder="https://…">
-              <img id="imageApercu" alt="Aperçu de l'image" hidden referrerpolicy="no-referrer">
-            </div>
-          </div>
-          <div class="two-columns">
-            <div class="form-group">
-              <label for="joueurs_min" class="required">Joueurs (min)</label>
-              <input type="number" id="joueurs_min" min="1" max="99" required>
-              <div id="joueursMinError" class="error-message">Le nombre de joueurs minimum est obligatoire.</div>
-            </div>
-            <div class="form-group">
-              <label for="joueurs_max">Joueurs (max)</label>
-              <input type="number" id="joueurs_max" min="1" max="99">
-            </div>
-          </div>
-          <div class="two-columns">
-            <div class="form-group">
-              <label for="duree_min">Durée min (minutes)</label>
-              <input type="number" id="duree_min" min="1">
-            </div>
-            <div class="form-group">
-              <label for="duree_max">Durée max (minutes)</label>
-              <input type="number" id="duree_max" min="1">
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="difficulte">Difficulté</label>
-            <select id="difficulte"><option value="">-- Choisir --</option></select>
-          </div>
-          <div class="form-group">
-            <label for="style">Style</label>
-            <select id="style" multiple size="6"></select>
-            <div id="stylesChoisis" class="styles-choisis" aria-live="polite"></div>
-            <small>Maintenez Ctrl/Cmd enfoncé pour sélectionner plusieurs styles.</small>
-          </div>
-          <div class="form-group checkbox-group">
-            <input type="checkbox" id="extension">
-            <label for="extension">Est une extension</label>
-          </div>
-          <div class="two-columns">
-            <div class="form-group">
-              <label for="age_min">Âge minimal</label>
-              <input type="number" id="age_min" min="0" max="99">
-            </div>
-            <div class="form-group">
-              <label for="date_achat">Date d'achat</label>
-              <input type="date" id="date_achat">
-            </div>
-          </div>
-          <div class="form-group checkbox-group">
-            <input type="checkbox" id="wishlistInput">
-            <label for="wishlistInput">Pas encore acheté : ajouter à la wishlist</label>
-          </div>
-        </fieldset>
-
-        <fieldset class="form-section">
-          <legend>Infos complémentaires</legend>
-          <div class="form-group">
-            <label id="descriptionLabel">Description</label>
-            <div id="editor" aria-labelledby="descriptionLabel"></div>
-          </div>
-          <div class="form-group">
-            <label for="video">Vidéo de présentation (lien YouTube)</label>
-            <input type="url" id="video" placeholder="https://youtube.com/…">
-          </div>
-          <div class="form-group">
-            <label for="emplacement">Emplacement</label>
-            <input type="text" id="emplacement" maxlength="120">
-            <small>Reste privé : n'apparaît jamais dans les liens de visualisation.</small>
-          </div>
-          <div class="form-group">
-            <label for="note">Avis personnel</label>
-            <select id="note">
-              <option value="-1">-- Choisir --</option>
-              <option value="1">⭐</option>
-              <option value="2">⭐⭐</option>
-              <option value="3">⭐⭐⭐</option>
-              <option value="4">⭐⭐⭐⭐</option>
-              <option value="5">⭐⭐⭐⭐⭐</option>
-            </select>
-          </div>
-        </fieldset>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn" id="cancelBtn">Annuler</button>
-        <button type="submit" class="btn btn-primaire" id="saveBtn">Enregistrer</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Liens de visualisation (lecture seule) -->
-  <dialog id="dlgPartages" class="dlg dlg-large" aria-labelledby="dlgPartagesTitre">
-    <div class="modal-body">
-      <div class="fiche-entete">
-        <h2 id="dlgPartagesTitre">Liens de visualisation</h2>
-        <button type="button" class="modal-close" aria-label="Fermer" data-fermer>×</button>
-      </div>
-      <p class="aide">
-        Toute personne qui possède un lien voit vos jeux sans pouvoir rien modifier, et sans compte.
-        Ne sont jamais partagés : vos adresses email, le nom des emprunteurs, l'emplacement et la date d'achat.
-        Révoquer un lien le rend inutilisable immédiatement.
-      </p>
-
-      <form id="formPartage" class="form-section partage-form" novalidate>
-        <div class="two-columns">
-          <div class="form-group">
-            <label for="partageLibelle" class="required">Pour qui ?</label>
-            <input type="text" id="partageLibelle" maxlength="60" placeholder="Ex. : Mamie, collègues…" required>
-            <small>Visible uniquement par vous, pour retrouver le lien.</small>
-          </div>
-          <div class="form-group">
-            <label for="partageTitre">Titre affiché</label>
-            <input type="text" id="partageTitre" maxlength="80">
-          </div>
+    <div class="prison-container">
+        <div class="error404">
+            <span class="number4">4</span>
+            <img src="404.jpg" alt="M. Monopoly en prison" class="monopoly-image">
+            <span class="number4">4</span>
         </div>
-        <div class="two-columns">
-          <div class="form-group">
-            <label for="partageExpiration">Expiration</label>
-            <select id="partageExpiration">
-              <option value="">Jamais</option>
-              <option value="7">Dans 7 jours</option>
-              <option value="30" selected>Dans 30 jours</option>
-              <option value="90">Dans 3 mois</option>
-              <option value="365">Dans 1 an</option>
-            </select>
-          </div>
-          <div class="form-group checkbox-group partage-wishlist">
-            <input type="checkbox" id="partageWishlist">
-            <label for="partageWishlist">Inclure la wishlist</label>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primaire" id="creerPartageBtn">Créer le lien</button>
-      </form>
-
-      <h3 class="liste-titre">Liens existants</h3>
-      <ul id="listePartages" class="liste-partages"></ul>
+        <p>
+           Vous avez atterri sur une case inexistante. Pas de loyer, mais pas de page non plus !
+        </p>
+        <a href="/Tapis-Vert/index.html" class="button">Retour à la case départ</a>
+        <p style="font-size: 0.9em; margin-top: 30px; font-style: italic;">
+            PS : Si vous passez par la case “Départ”, vous ne touchez pas 200€.
+        </p>
     </div>
-  </dialog>
-
-  <script type="module" src="./scripts/dashboard.js"></script>
 </body>
 </html>
