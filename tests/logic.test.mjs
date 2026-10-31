@@ -125,3 +125,35 @@ test("slug pour les noms de fichiers", () => {
   assert.equal(L.slug("Mamie & Papi Côté"), "mamie-papi-cote");
   assert.equal(L.slug("***"), "lien");
 });
+
+test("peutEmprunter : jeu d'un autre, disponible, hors wishlist", () => {
+  const moi = ["a@x.fr", "b@x.fr"];
+  assert.ok(L.peutEmprunter(jeu({ proprio: "c@x.fr" }), moi));
+  assert.ok(!L.peutEmprunter(jeu({ proprio: "a@x.fr" }), moi), "mon jeu");
+  assert.ok(!L.peutEmprunter(jeu({ proprio: "b@x.fr" }), moi), "jeu de ma famille");
+  assert.ok(!L.peutEmprunter(jeu({ proprio: "c@x.fr", estPrete: "Paul" }), moi), "déjà prêté");
+  assert.ok(!L.peutEmprunter(jeu({ proprio: "c@x.fr", wishlist: true }), moi), "wishlist");
+  assert.ok(!L.peutEmprunter(jeu({ proprio: "pas-un-email" }), moi), "propriétaire sans email valide");
+  assert.ok(!L.peutEmprunter(jeu({ proprio: undefined }), moi));
+  // Version épurée (liens de lecture seule) : pas de propriétaire -> jamais d'emprunt
+  assert.ok(!L.peutEmprunter({ nom: "Azul", prete: false }, moi));
+});
+
+test("lienEmprunt : mailto encodé avec les infos du jeu", () => {
+  const url = L.lienEmprunt(jeu({ proprio: "c+jeux@x.fr", nom: "Azul & Co ?", estExtension: true, ageMinimal: 8 }));
+  assert.ok(url.startsWith("mailto:c%2Bjeux@x.fr?subject="), url);
+  const q = new URL(url).searchParams;
+  assert.equal(q.get("subject"), "Emprunt du jeu « Azul & Co ? »");
+  const corps = q.get("body");
+  assert.match(corps, /Jeu : Azul & Co \? \(extension\)/);
+  assert.match(corps, /Joueurs : 2 à 4/);
+  assert.match(corps, /Durée : 30 – 45 min/);
+  assert.match(corps, /Âge minimum : 8 ans/);
+  assert.ok(corps.includes("\r\n"), "sauts de ligne RFC 6068");
+  assert.ok(!url.includes(" ") && !url.includes("\n"));
+});
+
+test("lienEmprunt : informations absentes omises", () => {
+  const corps = new URL(L.lienEmprunt(jeu({ proprio: "c@x.fr", joueurs: [], duree: [], ageMinimal: 0 }))).searchParams.get("body");
+  assert.ok(!corps.includes("Joueurs") && !corps.includes("Durée") && !corps.includes("Âge"));
+});

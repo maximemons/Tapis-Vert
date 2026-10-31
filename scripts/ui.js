@@ -112,7 +112,7 @@ const estPrete = (jeu) => jeu.prete === true || Boolean(jeu.estPrete);
 
 /**
  * @param jeu      Jeux complet (propriétaire) ou copie épurée (lecture seule)
- * @param actions  [{ icone, titre, onClick, class? }] – vide en lecture seule
+ * @param actions  [{ icone, titre, onClick | href, libelle?, class? }] – vide en lecture seule
  * @param onOuvrir callback d'ouverture de la fiche
  */
 export function carteJeu(jeu, { actions = [], onOuvrir } = {}) {
@@ -132,15 +132,15 @@ export function carteJeu(jeu, { actions = [], onOuvrir } = {}) {
     );
 
     if (actions.length) {
-        carte.append(el("div", { class: "card-actions" }, actions.map(a =>
-            el("button", {
-                type: "button",
-                class: `card-action ${a.class || ""}`,
-                title: a.titre,
-                "aria-label": a.titre,
-                onclick: (e) => { e.stopPropagation(); a.onClick(); }
-            }, icone(a.icone))
-        )));
+        carte.append(el("div", { class: "card-actions" }, actions.map(a => {
+            const contenu = [icone(a.icone), a.libelle ? el("span", { class: "card-action-texte" }, a.libelle) : null];
+            const attrs = { class: `card-action ${a.libelle ? "card-action-libelle " : ""}${a.class || ""}`.trim(), title: a.titre, "aria-label": a.titre };
+            // Action « lien » (ex. mailto:) : vrai <a>, pour que le navigateur gère l'ouverture.
+            if (a.href) {
+                return el("a", { ...attrs, href: a.href, onclick: (e) => e.stopPropagation() }, contenu);
+            }
+            return el("button", { ...attrs, type: "button", onclick: (e) => { e.stopPropagation(); a.onClick(); } }, contenu);
+        })));
     }
     if (onOuvrir) {
         carte.addEventListener("click", () => onOuvrir(jeu));

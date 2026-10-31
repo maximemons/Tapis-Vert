@@ -4,7 +4,7 @@ import { requireUser, logout } from "./firebase-auth.js";
 import { Jeux, COLLECTIONS, DIFFICULTE, STYLES } from "./records.js";
 import {
     construireGroupes, filtreDepuisParams, filtreVersParams, jeuCorrespond,
-    trierParNom, estExpire, titreParDefaut, slug
+    trierParNom, estExpire, titreParDefaut, slug, peutEmprunter, lienEmprunt
 } from "./logic.js";
 import {
     $, el, ouvrirDialog, demander, notifier, afficherGrille, afficherFiche, tirerAuSort,
@@ -91,7 +91,7 @@ function afficher() {
             jeu.estPrete
                 ? { icone: "rotate-left", titre: `Retour de prêt (${jeu.estPrete})`, onClick: () => retourPret(jeu) }
                 : { icone: "paper-plane", titre: "Prêter", onClick: () => preter(jeu) }
-        ] : []
+        ] : actionsEmprunt(jeu)
     }));
 
     $("#wishlistCount").textContent = `(${souhaites.length})`;
@@ -103,6 +103,12 @@ function afficher() {
             { icone: "euro-sign", titre: "Marquer comme acheté", onClick: () => acheter(jeu) }
         ] : []
     }));
+}
+
+/** Jeu d'un autre : bouton « Emprunter » (mailto vers le propriétaire), sauf wishlist ou jeu déjà prêté. */
+function actionsEmprunt(jeu) {
+    if (!peutEmprunter(jeu, state.famille.emails)) return [];
+    return [{ icone: "envelope", libelle: "Emprunter", titre: `Emprunter « ${jeu.nom} » (envoyer un email au propriétaire)`, href: lienEmprunt(jeu) }];
 }
 
 function appliquerFiltres() {

@@ -31,6 +31,12 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
   - Liste de jeux souhaités
   - Distinction claire entre jeux possédés et jeux désirés
 
+- ✉️ **Emprunter un jeu**
+  - Sur les jeux d'un autre propriétaire, un bouton « Emprunter » ouvre un email (lien `mailto:`) pré-rempli
+    à destination du propriétaire, avec le nom, le nombre de joueurs, la durée et l'âge minimum du jeu
+  - Absent de la wishlist, des jeux déjà prêtés et de ses propres jeux (ou ceux de sa famille)
+  - Aucun envoi côté serveur : c'est la messagerie de l'utilisateur qui s'ouvre
+
 - 🔄 **Gestion des prêts**
   - Suivi des jeux prêtés
   - Vision rapide des jeux actuellement indisponibles
@@ -146,5 +152,5 @@ Aucun index composite n'est nécessaire.
 npm test                                   # tests unitaires (Node 20+)
 npm install --no-save dompurify@3.1.6 jsqr@1.4.0 pngjs@7.0.0   # prérequis (décodage des QR codes)
 pip install playwright && playwright install chromium
-python3 tests/e2e/e2e.py                   # 80 vérifications de bout en bout
+python3 tests/e2e/e2e.py                   # 88 vérifications de bout en bout
 ```

@@ -45,7 +45,9 @@ SEED = {
   "jeux/g2": {"proprio": "b@x.fr", "nom": "Brass", "joueurs": [3, 4], "duree": [120], "styles": ["ECONOMIQUE"], "estPrete": "Tonton Paul", "image": "javascript:alert(1)"},
   "jeux/g3": {"proprio": "a@x.fr", "nom": "Codenames", "joueurs": [2, 8], "duree": [15], "styles": ["PARTY"]},
   "jeux/w1": {"proprio": "a@x.fr", "nom": "Wingspan", "joueurs": [1, 5], "wishlist": True},
-  "jeux/c1": {"proprio": "c@x.fr", "nom": "Carcassonne", "joueurs": [2, 5]},
+  "jeux/c1": {"proprio": "c@x.fr", "nom": "Carcassonne", "joueurs": [2, 5], "duree": [30, 45], "ageMinimal": 7},
+  "jeux/c2": {"proprio": "c@x.fr", "nom": "Dobble", "joueurs": [2, 8], "estPrete": "Tonton Paul"},
+  "jeux/cw": {"proprio": "c@x.fr", "nom": "Catan", "joueurs": [3, 4], "wishlist": True},
 }
 
 ok = 0
@@ -210,8 +212,28 @@ with sync_playwright() as p:
     check(page.locator("#grid .card").count() == 1, "filtre joueurs = 8 → Dixit seul")
     page.select_option("#playersSelect", "")
     page.select_option("#ownerSelect", "ALL")
-    check(page.locator("#grid .card").count() == 4, "tous les propriétaires")
-    check(page.locator("#grid .card:has-text('Carcassonne') .card-actions").count() == 0, "pas d'actions sur les jeux des autres")
+    check(page.locator("#grid .card").count() == 5, "tous les propriétaires")
+    check(page.locator("#grid .card:has-text('Carcassonne') [aria-label='Supprimer'], #grid .card:has-text('Carcassonne') [aria-label='Modifier'], #grid .card:has-text('Carcassonne') [aria-label='Prêter']").count() == 0, "pas de suppression, modification ni prêt sur les jeux des autres")
+
+    # --- Emprunter : simple lien mailto vers le propriétaire, pour les jeux des autres uniquement
+    bouton = page.locator("#grid .card:has-text('Carcassonne') a.card-action:has-text('Emprunter')")
+    check(bouton.count() == 1, "bouton Emprunter sur un jeu disponible d'un autre")
+    from urllib.parse import urlparse, parse_qs, unquote
+    href = bouton.get_attribute("href")
+    mail = urlparse(href)
+    qs = parse_qs(mail.query)
+    corps = qs["body"][0]
+    check(mail.scheme == "mailto" and unquote(mail.path) == "c@x.fr", f"mailto adressé au propriétaire : {mail.path}")
+    check("Carcassonne" in qs["subject"][0], "objet avec le nom du jeu")
+    check("Carcassonne" in corps and "Joueurs : 2 à 5" in corps and "Durée : 30 – 45 min" in corps and "Âge minimum : 7 ans" in corps, "corps avec les infos du jeu")
+    page.evaluate("window.__marqueur = 1")
+    bouton.evaluate("a => a.addEventListener('click', e => e.preventDefault())")  # on ne quitte pas la page pendant le test
+    bouton.click()
+    check(page.locator("#dlgFiche[open]").count() == 0, "clic sur Emprunter n'ouvre pas la fiche")
+    check(page.locator("#grid .card:has-text('Dobble')").count() == 1 and page.locator("#grid .card:has-text('Dobble') .card-action").count() == 0, "pas d'Emprunter sur un jeu déjà prêté")
+    check(page.locator("#grid .card:has-text('Azul') a.card-action, #grid .card:has-text('Brass') a.card-action").count() == 0, "pas d'Emprunter sur mes jeux ni ceux de ma famille")
+    page.screenshot(path=CAPTURES + "/emprunter.png")
+    check(page.locator("#wishlistGrid .card:has-text('Catan')").count() == 1 and page.locator("#wishlistGrid a.card-action").count() == 0, "pas d'Emprunter sur la wishlist d'un autre")
     page.select_option("#ownerSelect", "a@x.fr,b@x.fr")
 
     # --- Surprise sans résultat ne plante plus

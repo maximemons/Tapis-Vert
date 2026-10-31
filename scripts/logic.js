@@ -140,6 +140,44 @@ export function trierParNom(jeux) {
     return [...jeux].sort((a, b) => (a.nom || "").localeCompare(b.nom || "", "fr", { sensitivity: "base" }));
 }
 
+/* ---------- Emprunt (lien mailto vers le propriétaire) ---------- */
+
+const EMAIL_SIMPLE = /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/;
+
+/**
+ * Un jeu peut être emprunté s'il appartient à quelqu'un d'autre, n'est pas dans une
+ * wishlist, n'est pas déjà prêté, et si son propriétaire a une adresse email exploitable.
+ * mesEmails : adresses de l'utilisateur connecté et de sa famille.
+ */
+export function peutEmprunter(jeu, mesEmails = []) {
+    if (!jeu || jeu.wishlist === true) return false;
+    if (jeu.estPrete && String(jeu.estPrete).trim()) return false;
+    if (typeof jeu.proprio !== "string" || !EMAIL_SIMPLE.test(jeu.proprio.trim())) return false;
+    return !mesEmails.includes(jeu.proprio);
+}
+
+/** Lien mailto (RFC 6068) pré-rempli avec les informations du jeu. */
+export function lienEmprunt(jeu) {
+    const lignes = (jeu.nom ? [`Jeu : ${jeu.nom}${jeu.estExtension ? " (extension)" : ""}`] : [])
+        .concat(
+            jeu.joueurs?.length ? [`Joueurs : ${formatPlage(jeu.joueurs, " à ")}`] : [],
+            jeu.duree?.length ? [`Durée : ${formatPlage(jeu.duree)} min`] : [],
+            jeu.ageMinimal > 0 ? [`Âge minimum : ${jeu.ageMinimal} ans`] : []
+        );
+    const corps = [
+        "Bonjour,",
+        "",
+        `Je serais intéressé(e) pour t'emprunter « ${jeu.nom} ». Serait-il disponible ?`,
+        "",
+        ...lignes,
+        "",
+        "Merci !"
+    ].join("\r\n");
+    const sujet = `Emprunt du jeu « ${jeu.nom} »`;
+    const destinataire = encodeURIComponent(jeu.proprio.trim()).replace(/%40/g, "@");
+    return `mailto:${destinataire}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+}
+
 /* ---------- Affichage ---------- */
 
 export function formatPlage(valeurs, separateur = " – ") {
