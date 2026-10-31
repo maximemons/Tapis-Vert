@@ -158,20 +158,12 @@ export function peutEmprunter(jeu, mesEmails = []) {
 
 /** Lien mailto (RFC 6068) pré-rempli avec les informations du jeu. */
 export function lienEmprunt(jeu) {
-    const lignes = (jeu.nom ? [`Jeu : ${jeu.nom}${jeu.estExtension ? " (extension)" : ""}`] : [])
-        .concat(
-            jeu.joueurs?.length ? [`Joueurs : ${formatPlage(jeu.joueurs, " à ")}`] : [],
-            jeu.duree?.length ? [`Durée : ${formatPlage(jeu.duree)} min`] : [],
-            jeu.ageMinimal > 0 ? [`Âge minimum : ${jeu.ageMinimal} ans`] : []
-        );
     const corps = [
         "Bonjour,",
         "",
         `Je serais intéressé(e) pour t'emprunter « ${jeu.nom} ». Serait-il disponible ?`,
         "",
-        ...lignes,
-        "",
-        "Merci !"
+        "Par avance merci !"
     ].join("\r\n");
     const sujet = `Emprunt du jeu « ${jeu.nom} »`;
     const destinataire = encodeURIComponent(jeu.proprio.trim()).replace(/%40/g, "@");
