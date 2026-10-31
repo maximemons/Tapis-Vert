@@ -38,7 +38,8 @@ def route(r):
 SEED = {
   "utilisateurs/a@x.fr": {"prenom": "Alice", "nom": "Martin", "liens": ["b@x.fr"], "acces": ["*"]},
   "utilisateurs/b@x.fr": {"prenom": "Bob", "nom": "Martin", "liens": ["a@x.fr"]},
-  "utilisateurs/c@x.fr": {"prenom": "Chloé", "nom": "Durand"},
+  "utilisateurs/c@x.fr": {"prenom": "Chloé", "nom": "Durand", "liens": ["c2@x.fr"]},
+  "utilisateurs/c2@x.fr": {"prenom": "Clément", "nom": "Durand", "liens": ["c@x.fr"]},
   "jeux/g1": {"proprio": "a@x.fr", "nom": "Azul", "joueurs": [2, 4], "duree": [30, 45], "styles": ["FAMILIAL"], "difficulte": "NIVEAU2", "note": 4,
               "description": "<p>Super <b>jeu</b><img src=x onerror=\"window.__xss=1\"><script>window.__xss=2</script><a href=\"javascript:window.__xss=3\">lien</a></p>",
               "emplacement": "Grenier", "dateAchat": "2024-01-01", "video": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
@@ -225,7 +226,8 @@ with sync_playwright() as p:
     corps = qs["body"][0]
     check(mail.scheme == "mailto" and unquote(mail.path) == "c@x.fr", f"mailto adressé au propriétaire : {mail.path}")
     check("Carcassonne" in qs["subject"][0], "objet avec le nom du jeu")
-    check("Carcassonne" in corps and "Joueurs : 2 à 5" in corps and "Durée : 30 – 45 min" in corps and "Âge minimum : 7 ans" in corps, "corps avec les infos du jeu")
+    check("Carcassonne" in corps and "Par avance merci" in corps, "corps de la demande")
+    check(qs.get("cc") == ["c2@x.fr"], f"co-propriétaire en CC : {qs.get('cc')}")
     page.evaluate("window.__marqueur = 1")
     bouton.evaluate("a => a.addEventListener('click', e => e.preventDefault())")  # on ne quitte pas la page pendant le test
     bouton.click()

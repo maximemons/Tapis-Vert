@@ -156,8 +156,16 @@ export function peutEmprunter(jeu, mesEmails = []) {
     return !mesEmails.includes(jeu.proprio);
 }
 
-/** Lien mailto (RFC 6068) pré-rempli avec les informations du jeu. */
-export function lienEmprunt(jeu) {
+/** Emails des co-propriétaires d'un jeu : les autres personnes rattachées au même compte (même groupe). */
+export function coProprietaires(jeu, groupes = []) {
+    const groupe = groupes.find(g => g.emails.includes(jeu.proprio));
+    return (groupe?.emails || []).filter(e => e !== jeu.proprio && EMAIL_SIMPLE.test(e));
+}
+
+const adresseMailto = (email) => encodeURIComponent(email.trim()).replace(/%40/g, "@");
+
+/** Lien mailto (RFC 6068) pré-rempli ; `copie` = emails mis en CC (co-propriétaires). */
+export function lienEmprunt(jeu, copie = []) {
     const corps = [
         "Bonjour,",
         "",
@@ -166,8 +174,9 @@ export function lienEmprunt(jeu) {
         "Par avance merci !"
     ].join("\r\n");
     const sujet = `Emprunt du jeu « ${jeu.nom} »`;
-    const destinataire = encodeURIComponent(jeu.proprio.trim()).replace(/%40/g, "@");
-    return `mailto:${destinataire}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+    const destinataire = adresseMailto(jeu.proprio);
+    const cc = copie.length ? `cc=${copie.map(adresseMailto).join(",")}&` : "";
+    return `mailto:${destinataire}?${cc}subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
 }
 
 /* ---------- Affichage ---------- */

@@ -4,7 +4,7 @@ import { requireUser, logout } from "./firebase-auth.js";
 import { Jeux, COLLECTIONS, DIFFICULTE, STYLES } from "./records.js";
 import {
     construireGroupes, filtreDepuisParams, filtreVersParams, jeuCorrespond,
-    trierParNom, estExpire, titreParDefaut, slug, peutEmprunter, lienEmprunt
+    trierParNom, estExpire, titreParDefaut, slug, peutEmprunter, lienEmprunt, coProprietaires
 } from "./logic.js";
 import {
     $, el, ouvrirDialog, demander, notifier, afficherGrille, afficherFiche, tirerAuSort,
@@ -105,10 +105,10 @@ function afficher() {
     }));
 }
 
-/** Jeu d'un autre : bouton « Emprunter » (mailto vers le propriétaire), sauf wishlist ou jeu déjà prêté. */
+/** Jeu d'un autre : bouton « Emprunter » (mailto vers le propriétaire, co-propriétaires en CC), sauf wishlist ou jeu déjà prêté. */
 function actionsEmprunt(jeu) {
     if (!peutEmprunter(jeu, state.famille.emails)) return [];
-    return [{ icone: "envelope", libelle: "Emprunter", titre: `Emprunter « ${jeu.nom} » (envoyer un email au propriétaire)`, href: lienEmprunt(jeu) }];
+    return [{ icone: "envelope", libelle: "Emprunter", titre: `Emprunter « ${jeu.nom} » (envoyer un email au propriétaire)`, href: lienEmprunt(jeu, coProprietaires(jeu, proprios())) }];
 }
 
 function appliquerFiltres() {

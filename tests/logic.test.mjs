@@ -139,21 +139,28 @@ test("peutEmprunter : jeu d'un autre, disponible, hors wishlist", () => {
   assert.ok(!L.peutEmprunter({ nom: "Azul", prete: false }, moi));
 });
 
-test("lienEmprunt : mailto encodé avec les infos du jeu", () => {
-  const url = L.lienEmprunt(jeu({ proprio: "c+jeux@x.fr", nom: "Azul & Co ?", estExtension: true, ageMinimal: 8 }));
+test("lienEmprunt : mailto encodé, sans CC par défaut", () => {
+  const url = L.lienEmprunt(jeu({ proprio: "c+jeux@x.fr", nom: "Azul & Co ?" }));
   assert.ok(url.startsWith("mailto:c%2Bjeux@x.fr?subject="), url);
   const q = new URL(url).searchParams;
   assert.equal(q.get("subject"), "Emprunt du jeu « Azul & Co ? »");
+  assert.equal(q.get("cc"), null);
   const corps = q.get("body");
-  assert.match(corps, /Jeu : Azul & Co \? \(extension\)/);
-  assert.match(corps, /Joueurs : 2 à 4/);
-  assert.match(corps, /Durée : 30 – 45 min/);
-  assert.match(corps, /Âge minimum : 8 ans/);
-  assert.ok(corps.includes("\r\n"), "sauts de ligne RFC 6068");
+  assert.match(corps, /t'emprunter « Azul & Co \? »/);
+  assert.ok(corps.includes("\r\n") && corps.endsWith("Par avance merci !"));
   assert.ok(!url.includes(" ") && !url.includes("\n"));
 });
 
-test("lienEmprunt : informations absentes omises", () => {
-  const corps = new URL(L.lienEmprunt(jeu({ proprio: "c@x.fr", joueurs: [], duree: [], ageMinimal: 0 }))).searchParams.get("body");
-  assert.ok(!corps.includes("Joueurs") && !corps.includes("Durée") && !corps.includes("Âge"));
+test("lienEmprunt : co-propriétaires en CC", () => {
+  const url = L.lienEmprunt(jeu({ proprio: "d@x.fr" }), ["e@x.fr", "f+g@x.fr"]);
+  assert.ok(url.startsWith("mailto:d@x.fr?cc=e@x.fr,f%2Bg@x.fr&subject="), url);
+  assert.equal(new URL(url).searchParams.get("cc"), "e@x.fr,f+g@x.fr");
+});
+
+test("coProprietaires : autres membres du compte, propriétaire exclu", () => {
+  const { groupes } = L.construireGroupes("a@x.fr", users);
+  assert.deepEqual(L.coProprietaires(jeu({ proprio: "d@x.fr" }), groupes), ["e@x.fr"]);
+  assert.deepEqual(L.coProprietaires(jeu({ proprio: "e@x.fr" }), groupes), ["d@x.fr"]);
+  assert.deepEqual(L.coProprietaires(jeu({ proprio: "c@x.fr" }), groupes), []);
+  assert.deepEqual(L.coProprietaires(jeu({ proprio: "inconnu@x.fr" }), groupes), []);
 });
