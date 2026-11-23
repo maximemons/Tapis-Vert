@@ -14,6 +14,9 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* L'attribut hidden l'emporte toujours, même sur les classes qui fixent display */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--green);

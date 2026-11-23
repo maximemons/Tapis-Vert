@@ -1,6 +1,6 @@
 import { app } from "./firebase-app.js";
-import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { db, doc, getDoc } from "./firebase-db.js";
 
 const auth = getAuth(app);
 
@@ -27,7 +27,7 @@ async function estAutorise(user) {
     } catch { /* jeton indisponible : on laisse les règles Firestore trancher */ }
     if (fournisseur === "password") return true;
     try {
-        const snap = await getDoc(doc(getFirestore(app), "utilisateurs", user.email));
+        const snap = await getDoc(doc(db, "utilisateurs", user.email));
         return snap.exists();
     } catch (error) {
         // Refus des règles = compte inconnu. Autre erreur (réseau…) : les règles protègent de toute façon.

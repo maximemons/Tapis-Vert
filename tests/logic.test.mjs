@@ -164,3 +164,105 @@ test("coProprietaires : autres membres du compte, propriétaire exclu", () => {
   assert.deepEqual(L.coProprietaires(jeu({ proprio: "c@x.fr" }), groupes), []);
   assert.deepEqual(L.coProprietaires(jeu({ proprio: "inconnu@x.fr" }), groupes), []);
 });
+
+/* ---------- Images importées ---------- */
+
+const PIXEL = "data:image/webp;base64,UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==";
+
+test("urlImageSure : liens http(s) et images importées raster acceptés, le reste refusé", () => {
+  assert.equal(L.urlImageSure("https://exemple.fr/a.jpg"), "https://exemple.fr/a.jpg");
+  assert.equal(L.urlImageSure(PIXEL), PIXEL);
+  assert.equal(L.urlImageSure("data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="), "", "SVG refusé (peut contenir du script)");
+  assert.equal(L.urlImageSure("data:text/html;base64,PGI+"), "");
+  assert.equal(L.urlImageSure("data:image/png;base64,<script>"), "", "base64 invalide");
+  assert.equal(L.urlImageSure("javascript:alert(1)"), "");
+  assert.equal(L.urlImageSure(`data:image/png;base64,${"A".repeat(L.TAILLE_MAX_IMAGE)}`), "", "trop lourde");
+});
+
+test("image importée conservée dans la copie publique d'un partage", () => {
+  const p = L.projeterJeuPourPartage({ nom: "X", image: PIXEL, proprio: "a@x.fr" });
+  assert.equal(p.image, PIXEL);
+});
+
+test("poids et dimensions des images", () => {
+  assert.equal(L.poidsDataUrl("data:image/png;base64,AAAA"), 3);
+  assert.equal(L.poidsDataUrl("data:image/png;base64,AA=="), 1);
+  assert.equal(L.formatPoids(500), "500 o");
+  assert.equal(L.formatPoids(150 * 1024), "150 Ko");
+  assert.equal(L.formatPoids(1536 * 1024), "1,5 Mo");
+  assert.deepEqual(L.dimensionsReduites(4000, 3000, 800), { largeur: 800, hauteur: 600 });
+  assert.deepEqual(L.dimensionsReduites(300, 900, 800), { largeur: 267, hauteur: 800 });
+  assert.deepEqual(L.dimensionsReduites(200, 100, 800), { largeur: 200, hauteur: 100 }, "jamais agrandie");
+  assert.deepEqual(L.dimensionsReduites(0, 100, 800), { largeur: 0, hauteur: 0 });
+});
+
+/* ---------- Recherche et tri ---------- */
+
+test("recherche : sans accents ni majuscules, tous les mots doivent figurer", () => {
+  const j = { nom: "Les Aventuriers du Rail : Europe" };
+  assert.ok(L.jeuCorrespond(j, { recherche: "aventurier" }));
+  assert.ok(L.jeuCorrespond(j, { recherche: "EUROPE rail" }));
+  assert.ok(L.jeuCorrespond({ nom: "Azul" }, { recherche: "AZÛL" }));
+  assert.ok(!L.jeuCorrespond(j, { recherche: "rail asie" }));
+  assert.ok(L.jeuCorrespond(j, { recherche: "   " }), "recherche vide = tout");
+});
+
+test("recherche et tri conservés dans l'URL", () => {
+  const params = L.filtreVersParams({ recherche: "azul", tri: "recents", joueur: "2" });
+  assert.equal(params.get("q"), "azul");
+  assert.equal(params.get("sort"), "recents");
+  const f = L.filtreDepuisParams(params, "a@x.fr");
+  assert.equal(f.recherche, "azul");
+  assert.equal(f.tri, "recents");
+});
+
+test("trier : récents, notes, durée ; à égalité ordre alphabétique ; tri inconnu = nom", () => {
+  const jeux = [
+    { nom: "Brass", ajouteLe: 10, note: 4, duree: [120] },
+    { nom: "Azul", note: 4, duree: [30, 45] },
+    { nom: "Codenames", ajouteLe: 30, note: -1, duree: [15] },
+    { nom: "Dixit", ajouteLe: 20, note: 5 }
+  ];
+  const noms = (t) => L.trier(jeux, t).map(j => j.nom);
+  assert.deepEqual(noms("recents"), ["Codenames", "Dixit", "Brass", "Azul"]);
+  assert.deepEqual(noms("note"), ["Dixit", "Azul", "Brass", "Codenames"]);
+  assert.deepEqual(noms("duree"), ["Codenames", "Azul", "Brass", "Dixit"]);
+  assert.deepEqual(noms("nimporte"), ["Azul", "Brass", "Codenames", "Dixit"]);
+  assert.deepEqual(jeux.map(j => j.nom), ["Brass", "Azul", "Codenames", "Dixit"], "entrée non modifiée");
+});
+
+/* ---------- Export ---------- */
+
+test("versCsv : en-tête, séparateur ;, guillemets, formules neutralisées, images importées masquées", () => {
+  const csv = L.versCsv([
+    { nom: "=HYPERLINK(\"x\")", proprio: "a@x.fr", joueurs: [2, 4], styles: ["FAMILIAL"], estExtension: true, note: -1, image: PIXEL },
+    { nom: "Azul; édition \"spéciale\"", proprio: "a@x.fr", joueurs: [2], difficulte: "NIVEAU2", image: "https://x.fr/a.jpg" }
+  ], { libelles: { difficulte: { NIVEAU2: "Facile" }, styles: { FAMILIAL: "Familial" } } });
+  assert.ok(csv.startsWith("\uFEFFNom;Propriétaire;Joueurs;"));
+  const lignes = csv.split("\r\n");
+  assert.equal(lignes.length, 3);
+  const l1 = lignes.find(l => l.includes("Azul"));
+  const l2 = lignes.find(l => l.includes("HYPERLINK"));
+  assert.ok(l1.startsWith('"Azul; édition ""spéciale"""'), l1);
+  assert.ok(l1.includes(";Facile;") && l1.includes("https://x.fr/a.jpg"));
+  assert.ok(l2.startsWith(`"'=HYPERLINK(""x"")"`), l2);
+  assert.ok(l2.includes(";2-4;") && l2.includes(";Familial;") && l2.includes(";oui;") && l2.includes("(image importée)"));
+});
+
+test("versJson : sauvegarde complète et triée, rechargeable", () => {
+  const j = new Jeux({ id: "g1", proprio: "a@x.fr", nom: "Azul", joueurs: [2, 4], image: PIXEL, ajouteLe: 123 });
+  const s = JSON.parse(L.versJson([j], { auteur: "a@x.fr", date: new Date("2026-01-02T03:04:05Z") }));
+  assert.equal(s.format, "tapis-vert/1");
+  assert.equal(s.exporteLe, "2026-01-02T03:04:05.000Z");
+  assert.equal(s.jeux[0].id, "g1");
+  assert.equal(s.jeux[0].image, PIXEL);
+  assert.equal(s.jeux[0].ajouteLe, 123);
+  assert.deepEqual(new Jeux(s.jeux[0]).toDoc(), j.toDoc());
+});
+
+test("Jeux : date d'ajout facultative et validée", () => {
+  assert.equal(new Jeux({ nom: "x" }).ajouteLe, undefined);
+  assert.equal(new Jeux({ nom: "x", ajouteLe: "abc" }).ajouteLe, undefined);
+  assert.equal(new Jeux({ nom: "x", ajouteLe: 5 }).ajouteLe, 5);
+  assert.ok(!("ajouteLe" in new Jeux({ nom: "x" }).toDoc()), "absente du document si inconnue");
+});

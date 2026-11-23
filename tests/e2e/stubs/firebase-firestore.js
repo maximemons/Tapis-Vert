@@ -16,6 +16,18 @@ const user = () => sessionStorage.getItem("__user");
 const denied = () => { const e = new Error("Missing or insufficient permissions."); e.code = "permission-denied"; throw e; };
 
 export function getFirestore() { return {}; }
+export function initializeFirestore() { return {}; }
+export const persistentLocalCache = (o) => ({ type: "persistent", ...o });
+export const persistentMultipleTabManager = () => ({ type: "multi-tab" });
+
+// Hors ligne simulé (localStorage.__horsLigne) : l'écriture est appliquée tout de suite
+// sur l'appareil, mais sa confirmation n'arrive qu'au retour du « réseau ».
+const horsLigne = () => localStorage.getItem("__horsLigne") === "1";
+const retourReseau = () => new Promise(r => { const t = setInterval(() => { if (!horsLigne()) { clearInterval(t); r(); } }, 50); });
+
+// Écoutes temps réel : relancées après chaque écriture
+const ecoutes = new Set();
+function notifier() { for (const e of ecoutes) e(); }
 export const serverTimestamp = () => new Timestamp(Date.now());
 export function collection(db, ...path) { return { type: "coll", path: path.join("/") }; }
 export function doc(dbOrColl, ...path) {
@@ -77,10 +89,18 @@ export async function getDocs(q) {
     .map(([p, d]) => ({ id: p.split("/").pop(), data: () => d, ref: { type: "doc", path: p, id: p.split("/").pop() } }));
   return { docs };
 }
-function write(fn) { if (!user()) denied(); const db = load(); fn(db); save(db); }
-export async function setDoc(ref, data) { log("set", ref.path); if (user()) checkRegles("set", ref.path, data); write(db => { db[ref.path] = JSON.parse(enc(data), (k, x) => x && x.__ts ? new Timestamp(x.__ts) : x); }); }
+function write(fn) { if (!user()) denied(); const db = load(); fn(db); save(db); setTimeout(notifier, 0); }
+export function onSnapshot(q, options, onData, onError) {
+  if (typeof options === "function") { onError = onData; onData = options; }
+  let actif = true;
+  const relancer = () => getDocs(q).then(r => actif && onData({ ...r, metadata: { fromCache: false, hasPendingWrites: false } }), e => actif && onError?.(e));
+  ecoutes.add(relancer);
+  setTimeout(relancer, 0);
+  return () => { actif = false; ecoutes.delete(relancer); };
+}
+export async function setDoc(ref, data) { log("set", ref.path); if (user()) checkRegles("set", ref.path, data); write(db => { db[ref.path] = JSON.parse(enc(data), (k, x) => x && x.__ts ? new Timestamp(x.__ts) : x); }); if (horsLigne()) await retourReseau(); }
 export async function updateDoc(ref, data) { log("update", ref.path); write(db => { db[ref.path] = { ...db[ref.path], ...data }; }); }
-export async function deleteDoc(ref) { log("delete", ref.path); if (user()) checkRegles("delete", ref.path); write(db => { delete db[ref.path]; }); }
+export async function deleteDoc(ref) { log("delete", ref.path); if (user()) checkRegles("delete", ref.path); write(db => { delete db[ref.path]; }); if (horsLigne()) await retourReseau(); }
 export function writeBatch() {
   const ops = [];
   return {

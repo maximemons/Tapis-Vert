@@ -1,8 +1,9 @@
 import { auth, getCurrentUser, estAutorise } from './firebase-auth.js';
+import { enregistrerServiceWorker } from './pwa.js';
 import {
     signInWithEmailAndPassword, sendPasswordResetEmail, signOut,
     GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
@@ -38,6 +39,7 @@ document.getElementById('loginForm').addEventListener('submit', async (event) =>
     event.preventDefault();
     const email = emailInput.value.trim();
     if (!email || !passwordInput.value) return afficher("Saisissez votre email et votre mot de passe.");
+    if (navigator.onLine === false) return afficher("Vous êtes hors ligne : la connexion nécessite internet. Si vous étiez déjà connecté, la ludothèque s'ouvre sans réseau.");
     loginBtn.disabled = true;
     try {
         await signInWithEmailAndPassword(auth, email, passwordInput.value);
@@ -107,6 +109,8 @@ document.getElementById("forgetPwd").addEventListener('click', async (event) => 
     }
     afficher("", "Si un compte existe pour cet email, un lien de réinitialisation vient d'être envoyé. Pensez à vérifier vos spams.");
 });
+
+enregistrerServiceWorker();
 
 // EASTER EGG
 const el = document.getElementById('myEgg');

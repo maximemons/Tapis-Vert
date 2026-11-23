@@ -355,15 +355,38 @@ button, select, input, textarea { font: inherit; }
 .styles-choisis { margin-top: 6px; font-size: 13px; color: var(--ink); }
 .styles-choisis:empty { display: none; }
 
-.champ-image { display: flex; gap: 8px; align-items: center; }
-.champ-image input { flex: 1; min-width: 0; }
-.champ-image img {
-  width: 56px; height: 56px;
-  object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid #ddd;
+/* Champ image : vignette + lien / fichier / photo */
+.champ-image { display: flex; gap: 12px; align-items: flex-start; }
+.image-zone {
+  flex: none;
+  position: relative;
+  width: 96px; height: 96px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px dashed #cfc6ad;
+  border-radius: 10px;
   background: #fff;
+  font-size: 40px;
+  overflow: hidden;
+  transition: border-color .2s, background .2s;
 }
+.image-zone img { width: 100%; height: 100%; object-fit: cover; }
+.image-zone.survol { border-color: var(--green); background: #eef6f0; }
+.image-zone.chargement::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: rgba(255, 255, 255, .7) center / 28px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Ccircle cx='25' cy='25' r='20' fill='none' stroke='%230E6B3B' stroke-width='5' stroke-dasharray='90 40'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 25 25' to='360 25 25' dur='.9s' repeatCount='indefinite'/%3E%3C/circle%3E%3C/svg%3E");
+}
+.image-sources { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.image-sources input[type="url"] { width: 100%; }
+.image-sources input:disabled { background: #f4efe3; font-style: italic; }
+.image-boutons { display: flex; flex-wrap: wrap; gap: 6px; }
+.image-boutons .btn { padding: 6px 10px; font-size: 13px; }
+.image-info:empty { display: none; }
+.image-info.succes { color: var(--green); }
+.image-info.erreur { color: var(--danger); }
+.btn-danger-texte { color: var(--danger); }
+@media (max-width: 420px) { .image-zone { width: 72px; height: 72px; font-size: 30px; } }
 
 .error-message { color: var(--danger); font-size: 12px; margin-top: 4px; display: none; }
 
@@ -460,4 +483,54 @@ button, select, input, textarea { font: inherit; }
 @media (max-width: 650px) {
   .filters select { width: 100%; }
   .entete h1 { font-size: 22px; }
+}
+
+/* Icônes SVG embarquées (remplacent Font Awesome) */
+.ico { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.125em; flex: none; }
+.icon-btn .ico { width: 18px; height: 18px; }
+
+/* Recherche et tri */
+.filters .recherche {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 8px 12px 8px 34px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--ivory) 10px center / 16px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%235E6B63' d='M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z'/%3E%3C/svg%3E");
+}
+
+/* Hors ligne */
+.bandeau-hors-ligne {
+  display: none;
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 14px;
+}
+.hors-ligne .bandeau-hors-ligne { display: block; }
+
+/* Export */
+.actions-colonne { flex-direction: column; align-items: stretch; max-width: 320px; margin: 0 auto; }
+.actions-colonne .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* Éditeur de secours (si Quill ne se charge pas) */
+.editeur-simple {
+  min-height: 120px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+}
+
+/* Filtres sur téléphone : deux colonnes, recherche pleine largeur */
+@media (max-width: 650px) {
+  .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .filters select { width: 100%; min-width: 0; }
+  .filters .recherche { grid-column: 1 / -1; }
 }
