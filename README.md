@@ -10,7 +10,8 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
 ## ✨ Fonctionnalités
 
 - 🔐 **Authentification Firebase**
-  - Connexion sécurisée des utilisateurs
+  - Connexion sécurisée des utilisateurs, par **email / mot de passe** ou avec un **compte Google**
+  - Un compte Google n'a accès à la ludothèque que si son email est déclaré dans la collection `utilisateurs`
   - Accès personnalisé à la ludothèque
 
 - 🎲 **Gestion des jeux de société**
@@ -140,7 +141,16 @@ et **Wikipédia** (résumé en français, image de repli). Gratuites, sans clé,
    console Firebase > Firestore Database > onglet « Règles » > remplacer tout le contenu > « Publier »
    (ou `firebase deploy --only firestore:rules`). Sans cette étape, la création de liens est refusée ;
    la fenêtre des liens l'indique et propose un bouton « Revérifier » une fois les règles publiées.
-2. Pousser sur la branche servie par GitHub Pages.
+2. **Activer la connexion Google** (une seule fois) :
+   - console Firebase > Authentication > « Sign-in method » > ajouter **Google** > activer > « Enregistrer » ;
+   - Authentication > Paramètres > « Domaines autorisés » : ajouter `maximemons.github.io`
+     (sans cela, la page affiche « Ce site n'est pas autorisé pour la connexion Google ») ;
+   - pour chaque personne qui se connecte avec Google, créer dans Firestore le document
+     `utilisateurs/<son adresse Gmail>` (mêmes champs que les autres : `prenom`, `nom`, `liens`…).
+     Un compte Google absent de cette collection est refusé, par la page **et** par les règles.
+   - ⚠ Si une personne a déjà un compte email / mot de passe **non vérifié** avec la même adresse Gmail,
+     Firebase remplace son mot de passe par la connexion Google lors de sa première connexion Google.
+3. Pousser sur la branche servie par GitHub Pages.
 
 Aucun index composite n'est nécessaire.
 
@@ -152,5 +162,5 @@ Aucun index composite n'est nécessaire.
 npm test                                   # tests unitaires (Node 20+)
 npm install --no-save dompurify@3.1.6 jsqr@1.4.0 pngjs@7.0.0   # prérequis (décodage des QR codes)
 pip install playwright && playwright install chromium
-python3 tests/e2e/e2e.py                   # 89 vérifications de bout en bout
+python3 tests/e2e/e2e.py                   # 94 vérifications de bout en bout
 ```

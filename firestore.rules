@@ -14,8 +14,14 @@ service cloud.firestore {
 
     /* ---------- Fonctions utilitaires ---------- */
 
+    // Compte email / mot de passe : créé par l'administrateur, toujours accepté.
+    // Compte Google : n'importe qui peut en avoir un, il n'est donc accepté que si son email
+    // (vérifié) a un document dans « utilisateurs ».
     function connecte() {
-      return request.auth != null && request.auth.token.email != null;
+      return request.auth != null && request.auth.token.email != null
+        && (request.auth.token.firebase.sign_in_provider == 'password'
+            || (request.auth.token.email_verified == true
+                && exists(/databases/$(database)/documents/utilisateurs/$(request.auth.token.email))));
     }
     function monEmail() {
       return request.auth.token.email;

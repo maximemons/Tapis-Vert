@@ -1,0 +1,20 @@
+{
+  "id": "./",
+  "name": "Tapis Vert — Ludothèque",
+  "short_name": "Tapis Vert",
+  "description": "Ludothèque privée : gérez vos jeux de société et ceux de la famille et des amis.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E6B3B",
+  "theme_color": "#0E6B3B",
+  "categories": ["entertainment", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
