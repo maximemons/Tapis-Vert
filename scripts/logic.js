@@ -59,6 +59,8 @@ export const DUREES = {
 
 // Noms des paramètres d'URL conservés pour ne pas casser les favoris existants.
 const PARAMS = {
+    recherche: "q",
+    tri: "sort",
     proprio: "ownerFilter",
     style: "styleFilter",
     joueur: "playerFilter",
@@ -86,7 +88,18 @@ export function filtreVersParams(filtre) {
     return params;
 }
 
+/** Texte comparable : minuscules, sans accents ni ponctuation superflue. */
+export function normaliser(texte) {
+    return String(texte ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 export function jeuCorrespond(jeu, filtre = {}) {
+    if (filtre.recherche) {
+        const mots = normaliser(filtre.recherche).split(" ").filter(Boolean);
+        const cible = normaliser(jeu.nom);
+        if (!mots.every(m => cible.includes(m))) return false;
+    }
     if (filtre.proprio && filtre.proprio !== TOUS) {
         if (!filtre.proprio.split(",").includes(jeu.proprio)) return false;
     }
@@ -138,6 +151,69 @@ export function facettes(jeux) {
 
 export function trierParNom(jeux) {
     return [...jeux].sort((a, b) => (a.nom || "").localeCompare(b.nom || "", "fr", { sensitivity: "base" }));
+}
+
+export const TRIS = {
+    nom: "Nom (A → Z)",
+    recents: "Ajoutés récemment",
+    note: "Mieux notés",
+    duree: "Plus courts d'abord"
+};
+
+/** Tri des jeux ; à égalité (ou valeur inconnue), on retombe sur l'ordre alphabétique. */
+export function trier(jeux, tri = "nom") {
+    const parNom = trierParNom(jeux);
+    const cle = {
+        recents: (j) => -(Number(j.ajouteLe) || 0),
+        note: (j) => -(Number(j.note) > 0 ? Number(j.note) : 0),
+        duree: (j) => (j.duree?.length ? j.duree[0] : Infinity)
+    }[tri];
+    if (!cle) return parNom;
+    // Tri stable : l'ordre alphabétique est conservé entre jeux de même valeur.
+    return parNom.map((j, i) => [j, i]).sort(([a, i], [b, k]) => (cle(a) - cle(b)) || (i - k)).map(([j]) => j);
+}
+
+/* ---------- Sauvegarde / export ---------- */
+
+const CHAMPS_EXPORT = [
+    ["nom", "Nom"], ["proprio", "Propriétaire"], ["joueurs", "Joueurs"], ["duree", "Durée (min)"],
+    ["difficulte", "Difficulté"], ["styles", "Styles"], ["ageMinimal", "Âge minimal"], ["note", "Note"],
+    ["estExtension", "Extension"], ["wishlist", "Wishlist"], ["estPrete", "Prêté à"],
+    ["emplacement", "Emplacement"], ["dateAchat", "Date d'achat"], ["video", "Vidéo"], ["image", "Image (lien)"]
+];
+
+function celluleCsv(valeur) {
+    let texte = Array.isArray(valeur) ? valeur.join(valeur.every(Number.isFinite) ? "-" : " | ")
+        : typeof valeur === "boolean" ? (valeur ? "oui" : "")
+        : valeur === undefined || valeur === null || valeur === -1 ? "" : String(valeur);
+    // Neutralise les formules pour les tableurs (injection CSV)
+    if (/^[=+\-@\t\r]/.test(texte)) texte = `'${texte}`;
+    return /[";\n\r]/.test(texte) ? `"${texte.replace(/"/g, '""')}"` : texte;
+}
+
+/** CSV (séparateur « ; », lisible directement par Excel en français), avec BOM UTF-8. */
+export function versCsv(jeux, { libelles = {} } = {}) {
+    const lignes = [CHAMPS_EXPORT.map(([, titre]) => titre).join(";")];
+    for (const j of trierParNom(jeux)) {
+        lignes.push(CHAMPS_EXPORT.map(([cle]) => {
+            let v = j[cle];
+            if (cle === "image" && typeof v === "string" && v.startsWith("data:")) v = "(image importée)";
+            if (cle === "difficulte") v = libelles.difficulte?.[v] || v;
+            if (cle === "styles") v = (v || []).map(s => libelles.styles?.[s] || s);
+            return celluleCsv(v);
+        }).join(";"));
+    }
+    return "\uFEFF" + lignes.join("\r\n");
+}
+
+/** Sauvegarde complète et rechargeable (JSON), images importées comprises. */
+export function versJson(jeux, { auteur = "", date = new Date() } = {}) {
+    return JSON.stringify({
+        format: "tapis-vert/1",
+        exporteLe: date.toISOString(),
+        exportePar: auteur,
+        jeux: trierParNom(jeux).map(j => (typeof j.toDoc === "function" ? { id: j.id, ...j.toDoc() } : { ...j }))
+    }, null, 2);
 }
 
 /* ---------- Emprunt (lien mailto vers le propriétaire) ---------- */
@@ -203,6 +279,43 @@ export function urlHttpSure(url) {
     }
 }
 
+/** Image importée depuis l'appareil : data URL d'une image matricielle (jamais de SVG, qui peut contenir du script). */
+const DATA_IMAGE = /^data:image\/(?:jpeg|png|webp|gif|avif);base64,[A-Za-z0-9+/]+={0,2}$/;
+
+/** Taille maximale d'une image importée, en caractères (identique à firestore.rules). */
+export const TAILLE_MAX_IMAGE = 400000;
+
+export function estImageImportee(valeur) {
+    return typeof valeur === "string" && valeur.length <= TAILLE_MAX_IMAGE && DATA_IMAGE.test(valeur);
+}
+
+/** Source d'image affichable : lien http(s) ou image importée valide ; sinon "". */
+export function urlImageSure(valeur) {
+    if (typeof valeur === "string" && valeur.startsWith("data:")) return estImageImportee(valeur) ? valeur : "";
+    return urlHttpSure(valeur);
+}
+
+/** Poids approximatif (en octets) d'une image importée. */
+export function poidsDataUrl(dataUrl) {
+    const virgule = (dataUrl || "").indexOf(",");
+    if (virgule < 0) return 0;
+    const b64 = dataUrl.slice(virgule + 1);
+    return Math.floor(b64.length * 3 / 4) - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
+}
+
+export function formatPoids(octets) {
+    if (octets < 1024) return `${octets} o`;
+    if (octets < 1024 * 1024) return `${Math.round(octets / 1024)} Ko`;
+    return `${(octets / 1024 / 1024).toFixed(1).replace(".", ",")} Mo`;
+}
+
+/** Dimensions réduites (proportions conservées) pour que le plus grand côté ne dépasse pas max. */
+export function dimensionsReduites(largeur, hauteur, max) {
+    if (!(largeur > 0) || !(hauteur > 0)) return { largeur: 0, hauteur: 0 };
+    const ratio = Math.min(1, max / Math.max(largeur, hauteur));
+    return { largeur: Math.max(1, Math.round(largeur * ratio)), hauteur: Math.max(1, Math.round(hauteur * ratio)) };
+}
+
 /** Transforme n'importe quel lien YouTube en URL d'intégration youtube-nocookie. */
 export function urlIntegrationYoutube(url) {
     const sure = urlHttpSure(url);
@@ -231,7 +344,7 @@ export function urlIntegrationYoutube(url) {
 export function projeterJeuPourPartage(jeu, { nettoyerHtml = (h) => h } = {}) {
     return {
         nom: jeu.nom || "",
-        image: urlHttpSure(jeu.image),
+        image: urlImageSure(jeu.image),
         joueurs: jeu.joueurs || [],
         duree: jeu.duree || [],
         difficulte: jeu.difficulte || "",

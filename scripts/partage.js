@@ -3,28 +3,34 @@
 // et des règles Firestore (lien révoqué ou expiré => accès refusé).
 import { db, collection, getDocs, getDocumentById } from "./firebase-db.js";
 import { COLLECTIONS } from "./records.js";
-import { estJetonValide, filtreDepuisParams, filtreVersParams, jeuCorrespond, trierParNom } from "./logic.js";
-import { $, afficherGrille, afficherFiche, tirerAuSort, remplirFiltres, lireFiltres, compteur, brancherHautDePage } from "./ui.js";
+import { estJetonValide, filtreDepuisParams, filtreVersParams, jeuCorrespond, trierParNom, trier } from "./logic.js";
+import { $, el, afficherGrille, afficherFiche, tirerAuSort, remplirFiltres, lireFiltres, compteur, brancherHautDePage } from "./ui.js";
+import { enregistrerServiceWorker } from "./pwa.js";
 
 const state = { jeux: [], filtre: {}, jeuxAffiches: [] };
 
-function etat(message) {
+function etat(message, { reessayer = false } = {}) {
     $("#contenu").hidden = true;
     $("#etat").hidden = false;
-    $("#etat").textContent = message;
+    $("#etat").replaceChildren(message);
+    if (reessayer) {
+        const bouton = el("button", { type: "button", class: "btn" }, "Réessayer");
+        bouton.addEventListener("click", () => location.reload());
+        $("#etat").append(" ", bouton);
+    }
     $(".pied").hidden = true;
 }
 
 function afficher() {
     const possedes = state.jeux.filter(j => !j.wishlist);
     remplirFiltres($("#filtres"), { jeux: possedes, filtre: state.filtre });
-    state.jeuxAffiches = trierParNom(possedes.filter(j => jeuCorrespond(j, state.filtre)));
+    state.jeuxAffiches = trier(possedes.filter(j => jeuCorrespond(j, state.filtre)), state.filtre.tri);
     $("#resultsCount").textContent = compteur(state.jeuxAffiches.length);
 
     const options = { onOuvrir: (j) => afficherFiche($("#dlgFiche"), j) }; // aucune action d'édition
     afficherGrille($("#grid"), state.jeuxAffiches, options);
 
-    const souhaites = trierParNom(state.jeux.filter(j => j.wishlist));
+    const souhaites = trierParNom(state.jeux.filter(j => j.wishlist && jeuCorrespond(j, { recherche: state.filtre.recherche })));
     $("#wishlist").hidden = souhaites.length === 0;
     $("#wishlistCount").textContent = `(${souhaites.length})`;
     afficherGrille($("#wishlistGrid"), souhaites, options);
@@ -62,18 +68,22 @@ async function init() {
     $("#contenu").hidden = false;
     afficher();
 
-    $("#filtres").addEventListener("change", () => {
+    const appliquer = () => {
         state.filtre = lireFiltres($("#filtres"));
         const url = new URL(location.href);
         url.search = filtreVersParams(state.filtre).toString(); // le #jeton est conservé
         history.replaceState(history.state, "", url);
         afficher();
-    });
+    };
+    $("#filtres").addEventListener("change", appliquer);
+    let minuterie = null;
+    $("#rechercheInput").addEventListener("input", () => { clearTimeout(minuterie); minuterie = setTimeout(appliquer, 150); });
     $("#surpriseBtn").addEventListener("click", () => tirerAuSort($("#dlgSurprise"), state.jeuxAffiches));
     brancherHautDePage($("#hautDePageBtn"));
 }
 
+enregistrerServiceWorker();
 init().catch((e) => {
     console.error(e);
-    etat("Impossible de charger la ludothèque. Vérifiez votre connexion puis rechargez la page.");
+    etat("Impossible de charger la ludothèque. Vérifiez votre connexion.", { reessayer: true });
 });

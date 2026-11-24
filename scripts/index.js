@@ -1,14 +1,16 @@
-import { auth, getCurrentUser } from './firebase-auth.js';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { auth, getCurrentUser, estAutorise } from './firebase-auth.js';
+import { enregistrerServiceWorker } from './pwa.js';
+import {
+    signInWithEmailAndPassword, sendPasswordResetEmail, signOut,
+    GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
 const loginBtn = document.getElementById('loginBtn');
+const googleBtn = document.getElementById('googleBtn');
 const errorDiv = document.getElementById('error');
 const successDiv = document.getElementById('success');
-
-// Déjà connecté : on file directement au tableau de bord.
-getCurrentUser().then(user => { if (user) window.location.replace('dashboard.html'); });
 
 // Messages compréhensibles au lieu des codes Firebase bruts.
 // Volontairement identiques pour « email inconnu » et « mauvais mot de passe ».
@@ -19,8 +21,13 @@ const MESSAGES = {
     'auth/user-not-found': "Email ou mot de passe incorrect.",
     'auth/user-disabled': "Ce compte est désactivé.",
     'auth/too-many-requests': "Trop de tentatives. Réessayez dans quelques minutes.",
-    'auth/network-request-failed': "Connexion impossible. Vérifiez votre réseau."
+    'auth/network-request-failed': "Connexion impossible. Vérifiez votre réseau.",
+    'auth/account-exists-with-different-credential': "Un compte existe déjà avec cet email : connectez-vous avec votre mot de passe.",
+    'auth/operation-not-allowed': "La connexion Google n'est pas activée pour ce site.",
+    'auth/unauthorized-domain': "Ce site n'est pas autorisé pour la connexion Google (domaine à ajouter dans Firebase).",
+    'auth/popup-blocked': "La fenêtre Google a été bloquée par le navigateur. Autorisez les pop-ups et réessayez."
 };
+const REFUS_GOOGLE = "Ce compte Google n'a pas accès à cette ludothèque. Demandez à l'administrateur de l'ajouter.";
 const message = (error) => MESSAGES[error?.code] || "La connexion a échoué. Réessayez.";
 
 function afficher(erreur, succes = "") {
@@ -32,12 +39,60 @@ document.getElementById('loginForm').addEventListener('submit', async (event) =>
     event.preventDefault();
     const email = emailInput.value.trim();
     if (!email || !passwordInput.value) return afficher("Saisissez votre email et votre mot de passe.");
+    if (navigator.onLine === false) return afficher("Vous êtes hors ligne : la connexion nécessite internet. Si vous étiez déjà connecté, la ludothèque s'ouvre sans réseau.");
     loginBtn.disabled = true;
     try {
         await signInWithEmailAndPassword(auth, email, passwordInput.value);
         window.location.replace('dashboard.html');
     } catch (error) {
         afficher(message(error));
+        loginBtn.disabled = false;
+    }
+});
+
+// Accès au tableau de bord, sauf pour un compte Google inconnu (déconnecté aussitôt).
+async function entrer(user) {
+    if (await estAutorise(user)) return window.location.replace('dashboard.html');
+    await signOut(auth).catch(() => {});
+    afficher(REFUS_GOOGLE);
+    loginBtn.disabled = false;
+    googleBtn.disabled = false;
+}
+
+// Déjà connecté, ou retour d'une connexion Google par redirection : on file au tableau de bord.
+(async () => {
+    if (location.hash === '#refuse') {
+        afficher(REFUS_GOOGLE);
+        history.replaceState(null, '', location.pathname + location.search);
+    }
+    try {
+        const retour = await getRedirectResult(auth);
+        if (retour?.user) return entrer(retour.user);
+    } catch (error) {
+        afficher(message(error));
+    }
+    const user = await getCurrentUser();
+    if (user) entrer(user);
+})();
+
+googleBtn.addEventListener('click', async () => {
+    const fournisseur = new GoogleAuthProvider();
+    fournisseur.setCustomParameters({ prompt: 'select_account' });
+    afficher("");
+    googleBtn.disabled = true;
+    loginBtn.disabled = true;
+    try {
+        const resultat = await signInWithPopup(auth, fournisseur);
+        await entrer(resultat.user);
+    } catch (error) {
+        const code = error?.code;
+        // Pop-up impossible (bloquée, appli installée…) : on passe par une redirection.
+        if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+            try { return await signInWithRedirect(auth, fournisseur); } catch (e) { error = e; }
+        }
+        // Fenêtre fermée par l'utilisateur : rien à signaler.
+        if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') afficher(message(error));
+        googleBtn.disabled = false;
         loginBtn.disabled = false;
     }
 });
@@ -54,6 +109,8 @@ document.getElementById("forgetPwd").addEventListener('click', async (event) => 
     }
     afficher("", "Si un compte existe pour cet email, un lien de réinitialisation vient d'être envoyé. Pensez à vérifier vos spams.");
 });
+
+enregistrerServiceWorker();
 
 // EASTER EGG
 const el = document.getElementById('myEgg');

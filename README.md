@@ -10,7 +10,8 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
 ## ✨ Fonctionnalités
 
 - 🔐 **Authentification Firebase**
-  - Connexion sécurisée des utilisateurs
+  - Connexion sécurisée des utilisateurs, par **email / mot de passe** ou avec un **compte Google**
+  - Un compte Google n'a accès à la ludothèque que si son email est déclaré dans la collection `utilisateurs`
   - Accès personnalisé à la ludothèque
 
 - 🎲 **Gestion des jeux de société**
@@ -28,6 +29,30 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
   - Filtres pour naviguer facilement dans la collection
   - Bouton « Surprends-moi » dans la barre d'outils du haut (à côté d'« Ajouter un jeu » et « Wishlist ») : tire un jeu au sort parmi ceux affichés
   - Bouton flottant ↑ pour remonter en haut de la page, visible dès qu'on a fait défiler la page
+
+- 🖼️ **Image de chaque jeu**
+  - Par **lien** (collé ou trouvé par le remplissage automatique), par **fichier**, par **photo**
+    (appareil photo du téléphone), en **collant** une image ou en la **glissant** sur la vignette
+  - Les images importées sont réduites (800 px max) et compressées (WebP) sur l'appareil, puis enregistrées
+    avec le jeu : pas besoin de Firebase Storage (offre payante), affichage hors ligne, présentes dans les liens de visualisation
+  - « Garder une copie » : transforme l'image d'un lien en image enregistrée, qui survit à la disparition du site d'origine
+  - Lien d'image mort : signalé dans le formulaire, et le dé 🎲 remplace l'image cassée sur la carte
+
+- 🔎 **Recherche et tri**
+  - Recherche par nom, sans tenir compte des accents ni des majuscules
+  - Tri par nom, ajout récent, note ou durée ; recherche et tri sont conservés dans l'URL (favoris)
+
+- 📴 **Hors ligne et résilience**
+  - L'application s'installe (PWA) et s'ouvre sans réseau (service worker)
+  - Les jeux s'affichent instantanément depuis l'appareil (cache Firestore persistant), puis se mettent à jour
+    en temps réel, y compris les modifications des autres membres
+  - Les modifications faites hors ligne sont conservées et envoyées automatiquement au retour du réseau
+  - Aucune dépendance à un CDN tiers pour l'interface : Quill, DOMPurify et les icônes sont embarqués
+  - Si l'éditeur de mise en forme ne se charge pas, un éditeur simple prend le relais
+  - Si les jeux d'une personne sont inaccessibles, les autres s'affichent quand même
+
+- 💾 **Sauvegarde**
+  - Export complet en JSON (images comprises) ou en CSV lisible par Excel
 
 - ⭐ **Wishlist**
   - Liste de jeux souhaités
@@ -75,6 +100,8 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
 ├── partage.html          Vue publique en lecture seule (partage.html#<jeton>)
 ├── 404.html / 404.jpg
 ├── firestore.rules       Règles de sécurité (à déployer !)
+├── sw.js                 Service worker : application disponible hors ligne
+├── manifest.webmanifest  Installation (PWA) ; icons/ et favicon.ico
 │
 ├── scripts/
 │   ├── firebase-app.js   Initialisation Firebase
@@ -87,7 +114,12 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
 │   ├── wikidata.js       Récupération des infos d'un jeu (Wikidata + Wikipédia)
 │   ├── saisie-auto.js    Autocomplétion du titre dans le formulaire
 │   ├── qrcode.js         QR codes des liens (SVG à l'écran, PNG à télécharger)
-│   └── vendor/qrcode-generator-1.4.4.js   Moteur QR code (MIT, Kazuhiko Arase)
+│   ├── images.js         Import d'images (fichier, photo, lien) : réduction et compression
+│   ├── editeur.js        Éditeur de description (Quill, chargé à la demande, avec repli)
+│   ├── icones.js         Icônes SVG embarquées (Font Awesome Free, CC BY 4.0)
+│   ├── pwa.js            Service worker et suivi du réseau
+│   ├── vendor/           Bibliothèques embarquées : qrcode-generator 1.4.4 (MIT),
+│   │                     Quill 2.0.3 (BSD-3), DOMPurify 3.4.17 (Apache-2.0 / MPL-2.0)
 │   ├── dashboard.js      Tableau de bord
 │   ├── partage.js        Vue lecture seule
 │   └── index.js          Connexion
@@ -95,7 +127,8 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
 ├── styles/
 │   ├── common.css
 │   ├── index.css
-│   └── dashboard.css     (aussi utilisé par partage.html)
+│   ├── dashboard.css     (aussi utilisé par partage.html)
+│   └── vendor/quill-2.0.3.snow.css
 │
 └── tests/
     ├── logic.test.mjs    Tests unitaires (node --test)
@@ -142,7 +175,24 @@ et **Wikipédia** (résumé en français, image de repli). Gratuites, sans clé,
    console Firebase > Firestore Database > onglet « Règles » > remplacer tout le contenu > « Publier »
    (ou `firebase deploy --only firestore:rules`). Sans cette étape, la création de liens est refusée ;
    la fenêtre des liens l'indique et propose un bouton « Revérifier » une fois les règles publiées.
-2. Pousser sur la branche servie par GitHub Pages.
+   - Depuis la version 2, les règles **vérifient qui peut lire les jeux** (famille, champ `acces`, liens des
+     personnes de `acces`) au lieu de laisser tout compte connecté tout lire, et **valident les jeux écrits**
+     (champs autorisés, taille des images ≤ 400 000 caractères).
+   - Les `liens` entre comptes doivent être **réciproques** (A lié à B et B lié à A), comme dans `construireGroupes()`.
+   - Si les jeux d'une personne n'apparaissent plus après publication, le tableau de bord le signale
+     (« n'ont pas pu être chargés ») : vérifiez son document `utilisateurs` et ses `liens`.
+2. **Activer la connexion Google** (une seule fois) :
+   - console Firebase > Authentication > « Sign-in method » > ajouter **Google** > activer > « Enregistrer » ;
+   - Authentication > Paramètres > « Domaines autorisés » : ajouter `maximemons.github.io`
+     (sans cela, la page affiche « Ce site n'est pas autorisé pour la connexion Google ») ;
+   - pour chaque personne qui se connecte avec Google, créer dans Firestore le document
+     `utilisateurs/<son adresse Gmail>` (mêmes champs que les autres : `prenom`, `nom`, `liens`…).
+     Un compte Google absent de cette collection est refusé, par la page **et** par les règles.
+   - ⚠ Si une personne a déjà un compte email / mot de passe **non vérifié** avec la même adresse Gmail,
+     Firebase remplace son mot de passe par la connexion Google lors de sa première connexion Google.
+3. Pousser sur la branche servie par GitHub Pages.
+4. À **chaque mise en ligne**, incrémenter `VERSION` dans `sw.js` : les appareils récupèrent alors la nouvelle version.
+   (Les fichiers du site passent toujours par le réseau d'abord : la copie locale ne sert que sans réseau.)
 
 Aucun index composite n'est nécessaire.
 
@@ -152,7 +202,8 @@ Aucun index composite n'est nécessaire.
 
 ```bash
 npm test                                   # tests unitaires (Node 20+)
-npm install --no-save dompurify@3.1.6 jsqr@1.4.0 pngjs@7.0.0   # prérequis (décodage des QR codes)
-pip install playwright && playwright install chromium
-python3 tests/e2e/e2e.py                   # 89 vérifications de bout en bout
+npm install --no-save jsqr@1.4.0 pngjs@7.0.0   # prérequis (décodage des QR codes)
+pip install playwright pillow && playwright install chromium
+python3 tests/e2e/e2e.py                   # 114 vérifications de bout en bout
+CHROMIUM=/chemin/vers/chromium python3 tests/e2e/e2e.py   # avec un Chromium déjà installé
 ```
