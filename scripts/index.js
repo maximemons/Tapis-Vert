@@ -27,7 +27,7 @@ const MESSAGES = {
     'auth/unauthorized-domain': "Ce site n'est pas autorisé pour la connexion Google (domaine à ajouter dans Firebase).",
     'auth/popup-blocked': "La fenêtre Google a été bloquée par le navigateur. Autorisez les pop-ups et réessayez."
 };
-const REFUS_GOOGLE = "Ce compte Google n'a pas accès à cette ludothèque. Demandez à l'administrateur de l'ajouter.";
+const REFUS_GOOGLE = "Ce compte n'a pas accès à cette ludothèque. Demandez à l'administrateur de l'ajouter.";
 const message = (error) => MESSAGES[error?.code] || "La connexion a échoué. Réessayez.";
 
 function afficher(erreur, succes = "") {

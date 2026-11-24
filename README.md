@@ -77,6 +77,17 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
   - Diagnostic intégré : si Firebase refuse l'accès, la fenêtre explique pourquoi et comment corriger
   - Données personnelles exclues : emails, nom des emprunteurs, emplacement, date d'achat
 
+- 🛡️ **Gestion des comptes (administrateur)**
+  - Bouton « Comptes » visible uniquement pour l'administrateur (`ADMIN` dans `scripts/records.js`)
+  - Ajouter un compte : email, prénom, nom ; option « Créer un mot de passe » (la personne reçoit un email
+    pour le choisir) ou connexion Google seule
+  - Supprimer un compte : il ne peut plus se connecter et est retiré des autres comptes ; ses jeux sont conservés
+  - **Ludothèque commune** (champ `liens`) : « Céline et Léo partagent la même ludothèque ».
+    Les liens sont toujours réciproques ; associer quelqu'un à un foyer existant l'ajoute à tout le foyer
+  - **Peut aussi voir les jeux de** (champ `acces`) : « Céline peut voir les jeux de Roger » (et de son foyer),
+    en lecture et emprunt seulement ; ou « Toutes les ludothèques » (`*`)
+  - Chaque modification est une écriture groupée Firestore : tout passe ou rien
+
 ---
 
 ## 🛠️ Technologies utilisées
@@ -104,6 +115,7 @@ Le site permet de gérer une collection de **jeux de société personnels**, ain
 ├── manifest.webmanifest  Installation (PWA) ; icons/ et favicon.ico
 │
 ├── scripts/
+│   ├── admin.js          Menu « Comptes » (administrateur uniquement, chargé à la demande)
 │   ├── firebase-app.js   Initialisation Firebase
 │   ├── firebase-auth.js  Authentification
 │   ├── firebase-db.js    Accès Firestore
@@ -190,8 +202,20 @@ et **Wikipédia** (résumé en français, image de repli). Gratuites, sans clé,
      Un compte Google absent de cette collection est refusé, par la page **et** par les règles.
    - ⚠ Si une personne a déjà un compte email / mot de passe **non vérifié** avec la même adresse Gmail,
      Firebase remplace son mot de passe par la connexion Google lors de sa première connexion Google.
-3. Pousser sur la branche servie par GitHub Pages.
-4. À **chaque mise en ligne**, incrémenter `VERSION` dans `sw.js` : les appareils récupèrent alors la nouvelle version.
+3. **Menu « Comptes » (version 2.1)** :
+   - les règles autorisent l'écriture dans `utilisateurs` au seul administrateur (`estAdmin()`), dont l'email
+     doit être **vérifié** (toujours le cas avec une connexion Google) ;
+   - ⚠ **tout** compte, y compris email / mot de passe, doit désormais avoir son document `utilisateurs` pour se
+     connecter (avant, un compte mot de passe était toujours accepté). Vérifiez avant de publier que chaque
+     personne a bien son document ;
+   - pour créer des mots de passe depuis le site, la création de comptes doit rester autorisée :
+     Authentication > Paramètres > « Actions des utilisateurs » > « Activer la création » cochée.
+     Sans risque : un compte créé par un inconnu n'a pas de document `utilisateurs` et ne voit rien ;
+   - supprimer un compte depuis le site efface son document (accès coupé) mais pas son identifiant dans
+     Firebase Authentication : on peut le supprimer à la main dans la console si on le souhaite ;
+   - changer d'administrateur : modifier `ADMIN` dans `scripts/records.js` **et** `estAdmin()` dans `firestore.rules`.
+4. Pousser sur la branche servie par GitHub Pages.
+5. À **chaque mise en ligne**, incrémenter `VERSION` dans `sw.js` : les appareils récupèrent alors la nouvelle version.
    (Les fichiers du site passent toujours par le réseau d'abord : la copie locale ne sert que sans réseau.)
 
 Aucun index composite n'est nécessaire.

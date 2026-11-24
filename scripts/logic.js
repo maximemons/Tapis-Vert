@@ -424,3 +424,83 @@ export function slug(texte) {
     return (texte || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
         .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "lien";
 }
+
+/* ---------- Administration des comptes ---------- */
+// Fonctions pures utilisées par le menu d'administration (scripts/admin.js).
+// Elles renvoient des « plans » d'écriture : { email: { liens?, acces? } } pour les seuls
+// documents qui changent, à appliquer ensuite en une écriture groupée (atomique).
+
+export function normaliserEmail(email) {
+    return String(email ?? "").trim().toLowerCase();
+}
+
+export function emailValide(email) {
+    return /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(normaliserEmail(email)) && normaliserEmail(email).length <= 200;
+}
+
+export function estAdmin(email, admin) {
+    return Boolean(email) && normaliserEmail(email) === normaliserEmail(admin);
+}
+
+const listeDe = (v) => Array.isArray(v) ? v.filter(x => typeof x === "string") : [];
+const memeListe = (a, b) => a.length === b.length && [...a].sort().every((v, i) => v === [...b].sort()[i]);
+
+/** Personnes partageant la ludothèque de « email » (lui compris), triées. */
+export function foyerDe(email, users) {
+    const u = users.find(x => x.id === email);
+    return uniq([email, ...listeDe(u?.liens)]).sort();
+}
+
+/** Ajoute ou remplace des champs dans un plan, en ignorant ce qui ne change rien. */
+function noter(plan, users, email, champ, valeur) {
+    const u = users.find(x => x.id === email);
+    if (!u) return;
+    if (memeListe(listeDe(u[champ]), valeur)) return;
+    plan[email] = { ...(plan[email] || {}), [champ]: valeur };
+}
+
+/**
+ * Met « a » et « b » dans la même ludothèque. Les deux foyers sont fusionnés et
+ * chaque membre est lié à tous les autres (liens réciproques, exigés par les règles).
+ */
+export function planLier(a, b, users) {
+    if (a === b) return {};
+    const groupe = uniq([...foyerDe(a, users), ...foyerDe(b, users)])
+        .filter(e => users.some(u => u.id === e)).sort();
+    const plan = {};
+    for (const e of groupe) noter(plan, users, e, "liens", groupe.filter(x => x !== e));
+    return plan;
+}
+
+/** Sort « email » de sa ludothèque commune : les autres membres restent liés entre eux. */
+export function planDelier(email, users) {
+    const plan = {};
+    for (const e of foyerDe(email, users)) {
+        const u = users.find(x => x.id === e);
+        if (!u) continue;
+        noter(plan, users, e, "liens", e === email ? [] : listeDe(u.liens).filter(x => x !== email));
+    }
+    return plan;
+}
+
+/** Avant suppression d'un compte : le retire des « liens » et « acces » de tous les autres. */
+export function planSuppression(email, users) {
+    const plan = {};
+    for (const u of users) {
+        if (u.id === email) continue;
+        noter(plan, users, u.id, "liens", listeDe(u.liens).filter(x => x !== email));
+        noter(plan, users, u.id, "acces", listeDe(u.acces).filter(x => x !== email));
+    }
+    return plan;
+}
+
+/**
+ * Liste « acces » à enregistrer : « * » seul si la personne voit tout, sinon les emails
+ * cochés, sans les membres de son propre foyer (qu'elle voit déjà) ni les inconnus.
+ */
+export function accesNettoyes(email, coches, voitTout, users) {
+    if (voitTout) return ["*"];
+    const foyer = foyerDe(email, users);
+    const connus = new Set(users.map(u => u.id));
+    return uniq(coches).filter(e => connus.has(e) && !foyer.includes(e)).sort();
+}

@@ -1,6 +1,6 @@
 import { getAllDocuments, enregistrerDocument, supprimerDocument, ecouter } from "./firebase-db.js";
 import { requireUser, logout } from "./firebase-auth.js";
-import { Jeux, COLLECTIONS, DIFFICULTE, STYLES } from "./records.js";
+import { Jeux, COLLECTIONS, DIFFICULTE, STYLES, ADMIN } from "./records.js";
 import {
     construireGroupes, filtreDepuisParams, filtreVersParams, jeuCorrespond,
     trierParNom, trier, estExpire, titreParDefaut, slug, peutEmprunter, lienEmprunt, coProprietaires,
@@ -931,6 +931,20 @@ function brancherEvenements() {
     });
     $("#dlgPartages [data-fermer]").addEventListener("click", () => $("#dlgPartages").close());
     $("#formPartage").addEventListener("submit", soumettrePartage);
+
+    // Menu « Comptes » : bouton affiché et module chargé uniquement pour l'administrateur.
+    // (Masquer le bouton n'est qu'un confort : ce sont les règles Firestore qui protègent.)
+    if (state.moi.toLowerCase() === ADMIN) {
+        $("#adminBtn").hidden = false;
+        $("#adminBtn").addEventListener("click", async () => {
+            try {
+                const { ouvrirAdmin } = await import("./admin.js");
+                await ouvrirAdmin();
+            } catch (e) {
+                erreur(e);
+            }
+        });
+    }
 }
 
 remplacerIcones();

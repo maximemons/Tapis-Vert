@@ -117,4 +117,8 @@ const STYLES = {
     TUILES: "Tuiles / Polyominos"
 };
 
-export { Utilisateurs, Jeux, COLLECTIONS, DIFFICULTE, STYLES };
+// Compte administrateur : seul à voir le menu « Comptes ». Doit être identique à estAdmin()
+// dans firestore.rules (ce sont les règles qui protègent réellement les écritures).
+const ADMIN = "pro.maxime.mons@gmail.com";
+
+export { Utilisateurs, Jeux, COLLECTIONS, DIFFICULTE, STYLES, ADMIN };

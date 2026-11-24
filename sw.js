@@ -1,7 +1,7 @@
 // Service worker Tapis Vert : l'application s'ouvre même sans réseau.
 // Les données (jeux) sont gérées à part, par le cache hors ligne de Firestore.
 // Incrémenter VERSION à chaque mise en ligne pour renouveler la copie locale.
-const VERSION = "tapis-vert-v2.0.1";
+const VERSION = "tapis-vert-v2.1.0";
 
 const COQUILLE = [
     "./",
@@ -19,6 +19,7 @@ const COQUILLE = [
     "./styles/index.css",
     "./styles/dashboard.css",
     "./styles/vendor/quill-2.0.3.snow.css",
+    "./scripts/admin.js",
     "./scripts/dashboard.js",
     "./scripts/editeur.js",
     "./scripts/firebase-app.js",

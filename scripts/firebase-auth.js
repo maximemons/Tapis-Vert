@@ -1,6 +1,7 @@
 import { app } from "./firebase-app.js";
 import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { db, doc, getDoc } from "./firebase-db.js";
+import { ADMIN } from "./records.js";
 
 const auth = getAuth(app);
 
@@ -15,17 +16,14 @@ function getCurrentUser() {
 }
 
 /**
- * Un compte email / mot de passe est créé par l'administrateur : il est toujours autorisé.
- * Un compte Google, lui, peut appartenir à n'importe qui : il n'est accepté que si
- * son email figure dans la collection « utilisateurs » (même règle que firestore.rules).
+ * Un compte n'est accepté que si son email figure dans la collection « utilisateurs »
+ * (même règle que firestore.rules), qu'il se connecte par mot de passe ou avec Google.
+ * Supprimer une personne depuis le menu « Comptes » lui coupe donc l'accès.
+ * L'administrateur est toujours accepté, pour ne jamais pouvoir s'enfermer dehors.
  */
 async function estAutorise(user) {
     if (!user?.email) return false;
-    let fournisseur = "password";
-    try {
-        fournisseur = (await user.getIdTokenResult?.())?.signInProvider ?? "password";
-    } catch { /* jeton indisponible : on laisse les règles Firestore trancher */ }
-    if (fournisseur === "password") return true;
+    if (user.email.toLowerCase() === ADMIN) return true;
     try {
         const snap = await getDoc(doc(db, "utilisateurs", user.email));
         return snap.exists();

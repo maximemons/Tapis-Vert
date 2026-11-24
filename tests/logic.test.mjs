@@ -266,3 +266,62 @@ test("Jeux : date d'ajout facultative et validée", () => {
   assert.equal(new Jeux({ nom: "x", ajouteLe: 5 }).ajouteLe, 5);
   assert.ok(!("ajouteLe" in new Jeux({ nom: "x" }).toDoc()), "absente du document si inconnue");
 });
+
+/* ---------- Administration des comptes ---------- */
+
+const comptes = [
+  { id: "celine@x.fr", prenom: "Céline", nom: "M", liens: [], acces: [] },
+  { id: "leo@x.fr", prenom: "Léo", nom: "V", liens: [], acces: [] },
+  { id: "roger@x.fr", prenom: "Roger", nom: "R", liens: ["rose@x.fr"], acces: [] },
+  { id: "rose@x.fr", prenom: "Rose", nom: "R", liens: ["roger@x.fr"], acces: ["celine@x.fr"] },
+];
+// Applique un plan comme le ferait l'écriture groupée Firestore
+const appliquerPlan = (users, plan) => users.map(u => ({ ...u, ...(plan[u.id] || {}) }));
+
+test("admin : emails normalisés et validés, administrateur reconnu", () => {
+  assert.equal(L.normaliserEmail("  Pro.Maxime@Gmail.com "), "pro.maxime@gmail.com");
+  assert.ok(L.emailValide("a@b.fr"));
+  assert.ok(!L.emailValide("a@b"));
+  assert.ok(!L.emailValide("a/b@c.fr"));
+  assert.ok(L.estAdmin("PRO.maxime.mons@gmail.com", "pro.maxime.mons@gmail.com"));
+  assert.ok(!L.estAdmin("", "pro.maxime.mons@gmail.com"));
+});
+
+test("admin : lier deux comptes = même ludothèque, liens réciproques", () => {
+  const plan = L.planLier("celine@x.fr", "leo@x.fr", comptes);
+  assert.deepEqual(plan, { "celine@x.fr": { liens: ["leo@x.fr"] }, "leo@x.fr": { liens: ["celine@x.fr"] } });
+  const apres = appliquerPlan(comptes, plan);
+  const { famille } = L.construireGroupes("leo@x.fr", apres);
+  assert.deepEqual(famille.emails, ["celine@x.fr", "leo@x.fr"]);
+});
+
+test("admin : lier à un foyer existant fusionne tout le foyer", () => {
+  const plan = L.planLier("leo@x.fr", "roger@x.fr", comptes);
+  const apres = appliquerPlan(comptes, plan);
+  for (const e of ["leo@x.fr", "roger@x.fr", "rose@x.fr"]) {
+    assert.deepEqual(L.foyerDe(e, apres), ["leo@x.fr", "roger@x.fr", "rose@x.fr"]);
+  }
+  assert.deepEqual(L.planLier("leo@x.fr", "rose@x.fr", apres), {}); // déjà liés : rien à écrire
+});
+
+test("admin : délier ne casse pas le reste du foyer", () => {
+  const lie = appliquerPlan(comptes, L.planLier("leo@x.fr", "roger@x.fr", comptes));
+  const apres = appliquerPlan(lie, L.planDelier("leo@x.fr", lie));
+  assert.deepEqual(L.foyerDe("leo@x.fr", apres), ["leo@x.fr"]);
+  assert.deepEqual(L.foyerDe("rose@x.fr", apres), ["roger@x.fr", "rose@x.fr"]);
+});
+
+test("admin : suppression retirée des liens et accès des autres", () => {
+  const plan = L.planSuppression("roger@x.fr", comptes);
+  assert.deepEqual(plan, { "rose@x.fr": { liens: [] } });
+  const plan2 = L.planSuppression("celine@x.fr", comptes);
+  assert.deepEqual(plan2, { "rose@x.fr": { acces: [] } });
+});
+
+test("admin : accès nettoyés (voit tout, foyer exclu, inconnus ignorés)", () => {
+  assert.deepEqual(L.accesNettoyes("celine@x.fr", ["roger@x.fr"], true, comptes), ["*"]);
+  assert.deepEqual(L.accesNettoyes("roger@x.fr", ["rose@x.fr", "celine@x.fr", "zz@x.fr", "celine@x.fr"], false, comptes), ["celine@x.fr"]);
+  // Céline voit les jeux de Roger… et donc aussi ceux de Rose (même foyer)
+  const u = appliquerPlan(comptes, { "celine@x.fr": { acces: ["roger@x.fr"] } });
+  assert.deepEqual(L.construireGroupes("celine@x.fr", u).groupes.map(g => g.emails.join(",")), ["roger@x.fr,rose@x.fr"]);
+});

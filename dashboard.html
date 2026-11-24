@@ -31,6 +31,9 @@
         <button type="button" class="icon-btn" id="partagesBtn" title="Liens de visualisation" aria-label="Liens de visualisation">
           <i data-icone="share-nodes"></i>
         </button>
+        <button type="button" class="icon-btn" id="adminBtn" title="Gérer les comptes" aria-label="Gérer les comptes" hidden>
+          <i data-icone="comptes"></i>
+        </button>
         <button type="button" class="icon-btn icon-btn-danger" id="logout" title="Se déconnecter" aria-label="Se déconnecter">
           <i data-icone="right-from-bracket"></i>
         </button>
@@ -319,6 +322,115 @@
       <h3 class="liste-titre">Liens existants</h3>
       <ul id="listePartages" class="liste-partages"></ul>
     </div>
+  </dialog>
+
+  <!-- Administration : comptes (visible uniquement par l'administrateur) -->
+  <dialog id="dlgAdmin" class="dlg dlg-large" aria-labelledby="dlgAdminTitre">
+    <div class="modal-body">
+      <div class="fiche-entete">
+        <h2 id="dlgAdminTitre">Comptes</h2>
+        <button type="button" class="modal-close" aria-label="Fermer" data-fermer>×</button>
+      </div>
+      <p class="aide">
+        Seules les personnes listées ici peuvent se connecter. Supprimer un compte lui coupe l'accès ;
+        ses jeux sont conservés et réapparaissent si le compte est recréé avec la même adresse.
+      </p>
+
+      <form id="formCompte" class="form-section partage-form" novalidate>
+        <div class="form-group">
+          <label for="compteEmail" class="required">Adresse email</label>
+          <input type="email" id="compteEmail" maxlength="200" autocomplete="off" required>
+        </div>
+        <div class="two-columns">
+          <div class="form-group">
+            <label for="comptePrenom" class="required">Prénom</label>
+            <input type="text" id="comptePrenom" maxlength="60" autocomplete="off" required>
+          </div>
+          <div class="form-group">
+            <label for="compteNom">Nom</label>
+            <input type="text" id="compteNom" maxlength="60" autocomplete="off">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="checkbox-group">
+            <input type="checkbox" id="compteMotDePasse" checked>
+            <label for="compteMotDePasse">Créer un mot de passe de connexion</label>
+          </div>
+          <small>La personne reçoit un email pour choisir son mot de passe. Inutile pour une adresse Gmail qui se connecte avec Google.</small>
+        </div>
+        <button type="submit" class="btn btn-primaire" id="ajouterCompteBtn"><i data-icone="plus"></i> Ajouter le compte</button>
+      </form>
+
+      <div class="comptes-barre">
+        <h3 class="liste-titre">Comptes existants <span id="comptesCompteur"></span></h3>
+        <input type="search" id="rechercheComptes" placeholder="Rechercher…" aria-label="Rechercher un compte" autocomplete="off">
+      </div>
+      <ul id="listeComptes" class="liste-partages"></ul>
+    </div>
+  </dialog>
+
+  <!-- Administration : modifier un compte -->
+  <dialog id="dlgCompte" class="dlg dlg-large" aria-labelledby="dlgCompteTitre">
+    <form id="formEditCompte" novalidate>
+      <div class="modal-body">
+        <div class="fiche-entete">
+          <h2 id="dlgCompteTitre"></h2>
+          <button type="button" class="modal-close" aria-label="Fermer" data-fermer>×</button>
+        </div>
+        <p class="compte-email" id="dlgCompteEmail"></p>
+
+        <div class="two-columns">
+          <div class="form-group">
+            <label for="editPrenom" class="required">Prénom</label>
+            <input type="text" id="editPrenom" maxlength="60" autocomplete="off" required>
+          </div>
+          <div class="form-group">
+            <label for="editNom">Nom</label>
+            <input type="text" id="editNom" maxlength="60" autocomplete="off">
+          </div>
+        </div>
+
+        <fieldset class="form-section">
+          <legend>Ludothèque commune</legend>
+          <div id="foyerActuel"></div>
+          <div class="lier-ligne">
+            <label for="lierAvec">Partager la même ludothèque que</label>
+            <div class="lier-controles">
+              <select id="lierAvec"></select>
+              <button type="button" class="btn" id="lierBtn"><i data-icone="link"></i> Associer</button>
+            </div>
+          </div>
+          <button type="button" class="btn btn-danger-texte" id="quitterFoyerBtn" hidden>Lui redonner sa propre ludothèque</button>
+          <small class="aide-discrete">Associer et dissocier s'appliquent tout de suite.</small>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Peut aussi voir les jeux de</legend>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="voitTout">
+            <label for="voitTout">Toutes les ludothèques</label>
+          </div>
+          <ul id="listeAcces" class="liste-acces"></ul>
+          <small class="aide-discrete">Consultation et emprunt seulement : il ne peut pas modifier ces jeux.</small>
+        </fieldset>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" id="annulerCompteBtn">Annuler</button>
+        <button type="submit" class="btn btn-primaire" id="enregistrerCompteBtn">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Administration : confirmation de suppression d'un compte -->
+  <dialog id="dlgSupprimerCompte" class="dlg">
+    <form method="dialog" class="centre">
+      <h2>Supprimer le compte de <span class="nom-compte"></span> ?</h2>
+      <p>Cette personne ne pourra plus se connecter et sera retirée de toutes les ludothèques communes. Ses jeux sont conservés.</p>
+      <div class="actions">
+        <button value="non" class="btn">Annuler</button>
+        <button value="oui" class="btn btn-danger">Supprimer</button>
+      </div>
+    </form>
   </dialog>
 
   <script src="./scripts/vendor/qrcode-generator-1.4.4.js"></script>

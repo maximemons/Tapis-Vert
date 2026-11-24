@@ -14,14 +14,24 @@ service cloud.firestore {
 
     /* ---------- Fonctions utilitaires ---------- */
 
-    // Compte email / mot de passe : créé par l'administrateur, toujours accepté.
-    // Compte Google : n'importe qui peut en avoir un, il n'est donc accepté que si son email
-    // (vérifié) a un document dans « utilisateurs ».
+    // Administrateur : seul autorisé à gérer la collection « utilisateurs » (menu « Comptes »).
+    // Doit être identique à ADMIN dans scripts/records.js. L'email doit être vérifié
+    // (toujours le cas avec une connexion Google).
+    function estAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'pro.maxime.mons@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    // Un compte (email / mot de passe ou Google) n'est accepté que si son email a un document
+    // dans « utilisateurs » : supprimer ce document depuis le menu « Comptes » coupe l'accès.
+    // Un compte Google doit en plus avoir un email vérifié. L'administrateur est toujours accepté.
     function connecte() {
       return request.auth != null && request.auth.token.email != null
-        && (request.auth.token.firebase.sign_in_provider == 'password'
-            || (request.auth.token.email_verified == true
-                && exists(/databases/$(database)/documents/utilisateurs/$(request.auth.token.email))));
+        && (estAdmin()
+            || (exists(/databases/$(database)/documents/utilisateurs/$(request.auth.token.email))
+                && (request.auth.token.firebase.sign_in_provider == 'password'
+                    || request.auth.token.email_verified == true)));
     }
     function monEmail() {
       return request.auth.token.email;
@@ -53,10 +63,20 @@ service cloud.firestore {
 
     /* ---------- Utilisateurs ---------- */
     // Lus par le tableau de bord pour construire la liste des propriétaires.
-    // Administrés uniquement depuis la console Firebase.
+    // Écrits uniquement par l'administrateur (menu « Comptes » ou console Firebase).
+    function utilisateurValide(d) {
+      return d.keys().hasOnly(['prenom', 'nom', 'liens', 'acces'])
+        && d.get('prenom', '') is string && d.get('prenom', '').size() <= 60
+        && d.get('nom', '') is string && d.get('nom', '').size() <= 60
+        && d.get('liens', []) is list && d.get('liens', []).size() <= 50
+        && d.get('acces', []) is list && d.get('acces', []).size() <= 200;
+    }
     match /utilisateurs/{email} {
       allow read: if connecte();
-      allow write: if false;
+      allow create, update: if estAdmin()
+        && email == email.lower()
+        && utilisateurValide(request.resource.data);
+      allow delete: if estAdmin();
     }
 
     /* ---------- Jeux ---------- */
