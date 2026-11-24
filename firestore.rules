@@ -14,14 +14,8 @@ service cloud.firestore {
 
     /* ---------- Fonctions utilitaires ---------- */
 
-    // Compte email / mot de passe : créé par l'administrateur, toujours accepté.
-    // Compte Google : n'importe qui peut en avoir un, il n'est donc accepté que si son email
-    // (vérifié) a un document dans « utilisateurs ».
     function connecte() {
-      return request.auth != null && request.auth.token.email != null
-        && (request.auth.token.firebase.sign_in_provider == 'password'
-            || (request.auth.token.email_verified == true
-                && exists(/databases/$(database)/documents/utilisateurs/$(request.auth.token.email))));
+      return request.auth != null && request.auth.token.email != null;
     }
     function monEmail() {
       return request.auth.token.email;
@@ -60,51 +54,16 @@ service cloud.firestore {
     }
 
     /* ---------- Jeux ---------- */
-    // Mes « accès » (champ acces de mon document utilisateur), toujours sous forme de liste.
-    function mesAcces() {
-      let chemin = /databases/$(database)/documents/utilisateurs/$(monEmail());
-      let acces = exists(chemin) ? get(chemin).data.get('acces', []) : [];
-      return acces is list ? acces : [];
-    }
-    // Même logique que construireGroupes() dans scripts/logic.js :
-    // ma famille, tout le monde avec « * », les personnes de mes accès et leurs liens.
-    function peutVoir(proprio) {
-      let cheminProprio = /databases/$(database)/documents/utilisateurs/$(proprio);
-      return proprio in maFamille()
-        || '*' in mesAcces()
-        || proprio in mesAcces()
-        || (exists(cheminProprio)
-            && get(cheminProprio).data.get('liens', []) is list
-            && get(cheminProprio).data.get('liens', []).hasAny(mesAcces()));
-    }
-    // Forme d'un jeu (identique à Jeux.toDoc() dans scripts/records.js).
-    // L'image peut être une image importée (data URL) : plafonnée à 400 000 caractères.
-    function jeuValide(d) {
-      return d.keys().hasOnly(['proprio', 'nom', 'joueurs', 'duree', 'difficulte', 'styles', 'estExtension',
-                               'estPrete', 'description', 'image', 'video', 'emplacement', 'ageMinimal',
-                               'dateAchat', 'wishlist', 'note', 'ajouteLe'])
-        && d.proprio is string
-        && d.nom is string && d.nom.size() > 0 && d.nom.size() <= 200
-        && d.get('image', '') is string && d.get('image', '').size() <= 400000
-        && d.get('description', '') is string && d.get('description', '').size() <= 100000
-        && d.get('joueurs', []) is list && d.get('joueurs', []).size() <= 2
-        && d.get('duree', []) is list && d.get('duree', []).size() <= 2
-        && d.get('styles', []) is list && d.get('styles', []).size() <= 50;
-    }
-
     match /jeux/{jeuId} {
-      // Le tableau de bord lit les jeux propriétaire par propriétaire (proprio == email) :
-      // c'est ce qui permet à ces règles de vérifier l'accès.
-      allow read: if connecte() && peutVoir(resource.data.proprio);
+      // À RESTREINDRE si besoin selon le champ « acces » (la logique actuelle
+      // d'accès n'est appliquée que côté client).
+      allow read: if connecte();
       // On ne peut créer / modifier / supprimer que les jeux de sa famille,
       // et une modification ne peut pas changer le propriétaire.
-      allow create: if connecte()
-        && request.resource.data.proprio in maFamille()
-        && jeuValide(request.resource.data);
+      allow create: if connecte() && request.resource.data.proprio in maFamille();
       allow update: if connecte()
         && resource.data.proprio in maFamille()
-        && request.resource.data.proprio == resource.data.proprio
-        && jeuValide(request.resource.data);
+        && request.resource.data.proprio == resource.data.proprio;
       allow delete: if connecte() && resource.data.proprio in maFamille();
     }
 
@@ -141,10 +100,7 @@ service cloud.firestore {
       match /jeux/{jeuId} {
         allow read: if estProprioPartage(jeton)
           || (exists(cheminPublic(jeton)) && nonExpire(get(cheminPublic(jeton)).data));
-        allow delete: if estProprioPartage(jeton);
-        allow create, update: if estProprioPartage(jeton)
-          && request.resource.data.get('image', '') is string
-          && request.resource.data.get('image', '').size() <= 400000;
+        allow write: if estProprioPartage(jeton);
       }
     }
   }

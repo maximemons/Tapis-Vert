@@ -14,7 +14,7 @@ class Jeux {
     constructor({
         id, proprio, nom, joueurs = [], duree = [], difficulte = "", styles = [],
         estExtension = false, estPrete, description = "", image = "", video = "",
-        emplacement = "", ageMinimal = 0, dateAchat = "", wishlist = false, note = -1, ajouteLe
+        emplacement = "", ageMinimal = 0, dateAchat = "", wishlist = false, note = -1
     } = {}) {
         this.id = id;
         this.proprio = proprio;
@@ -33,8 +33,6 @@ class Jeux {
         this.dateAchat = dateAchat || "";
         this.wishlist = wishlist === true;
         this.note = Number(note) > 0 ? Number(note) : -1;
-        // Date d'ajout (ms) : absente des jeux créés avant son introduction.
-        this.ajouteLe = Number.isFinite(Number(ajouteLe)) && Number(ajouteLe) > 0 ? Number(ajouteLe) : undefined;
     }
 
     static fromDoc(doc) {

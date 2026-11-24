@@ -1,19 +1,15 @@
-import { getAllDocuments, enregistrerDocument, supprimerDocument, ecouter } from "./firebase-db.js";
+import Quill from "https://esm.sh/quill@1.3.7";
+import { getAllDocuments, getDocumentsWithWhere, setDocument, deleteDocument } from "./firebase-db.js";
 import { requireUser, logout } from "./firebase-auth.js";
 import { Jeux, COLLECTIONS, DIFFICULTE, STYLES } from "./records.js";
 import {
     construireGroupes, filtreDepuisParams, filtreVersParams, jeuCorrespond,
-    trierParNom, trier, estExpire, titreParDefaut, slug, peutEmprunter, lienEmprunt, coProprietaires,
-    estImageImportee, poidsDataUrl, formatPoids, urlImageSure, versCsv, versJson
+    trierParNom, estExpire, titreParDefaut, slug, peutEmprunter, lienEmprunt, coProprietaires
 } from "./logic.js";
 import {
     $, el, ouvrirDialog, demander, notifier, afficherGrille, afficherFiche, tirerAuSort,
-    remplirFiltres, lireFiltres, compteur, nettoyerHtml, icone
+    remplirFiltres, lireFiltres, compteur, nettoyerHtml, brancherHautDePage
 } from "./ui.js";
-import { remplacerIcones } from "./icones.js";
-import { creerEditeur } from "./editeur.js";
-import { compresserImage, copierDepuisLien, imageDuTransfert, ErreurImage } from "./images.js";
-import { surveillerReseau, enregistrerServiceWorker } from "./pwa.js";
 import {
     listerPartages, creerPartage, synchroniserTousLesPartages, revoquerPartage, lienDuPartage
 } from "./partages.js";
@@ -31,103 +27,42 @@ const state = {
     filtre: {},
     jeuxAffiches: [],
     partages: [],
-    partagesEtat: null,
-    // Écoute temps réel des jeux : email -> { jeux, depuisCache, erreur }
-    sources: new Map(),
-    jeuxConfirmes: false // vrai dès que toutes les sources ont répondu depuis le serveur
+    partagesEtat: null
 };
 
-let quill = null; // éditeur de description (chargé à la demande, cf. editeur.js)
+let quill = null;
 
 const estAMoi = (jeu) => state.famille.emails.includes(jeu.proprio);
 const proprios = () => [state.famille, ...state.groupes];
 
 /* ---------- Chargement ---------- */
 
-/**
- * Écoute en temps réel les jeux de chaque propriétaire visible (une requête par email :
- * c'est ce que les règles Firestore savent vérifier, et un refus n'empêche pas le reste
- * de s'afficher). Le premier affichage vient du cache de l'appareil : instantané, et
- * possible hors ligne. Résout quand chaque source a répondu une première fois.
- */
-function ecouterJeux(emails) {
-    return new Promise((resolve) => {
-        let enAttente = emails.length;
-        const premiereReponse = (email) => {
-            if (state.sources.get(email).repondu) return;
-            state.sources.get(email).repondu = true;
-            if (--enAttente === 0) resolve();
-        };
-        if (!emails.length) resolve();
-        // Filet de sécurité : on affiche ce qu'on a au bout de 8 s, même si une source traîne.
-        setTimeout(resolve, 8000);
-        for (const email of emails) {
-            state.sources.set(email, { jeux: [], depuisCache: true, erreur: null, repondu: false });
-            ecouter(COLLECTIONS.JEUX, "proprio", email,
-                (docs, { depuisCache }) => {
-                    Object.assign(state.sources.get(email), { jeux: docs.map(Jeux.fromDoc), depuisCache, erreur: null });
-                    premiereReponse(email);
-                    sourcesModifiees();
-                },
-                (erreurEcoute) => {
-                    console.warn(`Jeux de ${email} inaccessibles :`, erreurEcoute);
-                    state.sources.get(email).erreur = erreurEcoute;
-                    premiereReponse(email);
-                    sourcesModifiees();
-                });
-        }
-    });
-}
-
-let rafSources = 0;
-function sourcesModifiees() {
-    const sources = [...state.sources.values()];
-    state.jeux = sources.flatMap(src => src.jeux);
-    const confirmes = sources.every(src => src.repondu && (!src.depuisCache || src.erreur));
-    if (confirmes && !state.jeuxConfirmes) {
-        state.jeuxConfirmes = true;
-        // Les liens de visualisation ne sont alignés que sur des données confirmées par le
-        // serveur : un cache ancien ne doit jamais écraser la copie publique.
-        planifierSynchro();
-    }
-    if (!state.pret) return;
-    cancelAnimationFrame(rafSources);
-    rafSources = requestAnimationFrame(afficher);
-}
-
-function signalerSourcesRefusees() {
-    const refusees = [...state.sources.entries()].filter(([, src]) => src.erreur);
-    if (!refusees.length) return;
-    const qui = refusees.map(([email]) => proprios().find(p => p.emails.includes(email))?.libelle || email);
-    notifier(`Les jeux de ${[...new Set(qui)].join(", ")} n'ont pas pu être chargés (accès refusé ou réseau). Les autres sont affichés.`, "erreur");
+async function chargerJeux(emails) {
+    // Requêtes « in » par paquets de 30 (limite Firestore) au lieu d'une requête par email.
+    const paquets = [];
+    for (let i = 0; i < emails.length; i += 30) paquets.push(emails.slice(i, i + 30));
+    const resultats = await Promise.all(paquets.map(p =>
+        getDocumentsWithWhere(COLLECTIONS.JEUX, [{ field: "proprio", operator: "in", value: p }])
+    ));
+    return resultats.flat().map(Jeux.fromDoc);
 }
 
 async function init() {
     const user = await requireUser();
     state.moi = user.email;
 
-    const users = await avecNouvelEssai(() => getAllDocuments(COLLECTIONS.UTILISATEURS));
+    const users = await getAllDocuments(COLLECTIONS.UTILISATEURS);
     const { famille, groupes } = construireGroupes(state.moi, users);
     state.famille = famille;
     state.groupes = groupes;
 
     const emails = [...new Set(proprios().flatMap(p => p.emails))];
-    await ecouterJeux(emails);
+    state.jeux = await chargerJeux(emails);
     state.filtre = filtreDepuisParams(new URL(location.href).searchParams, famille.emails.join(","));
 
     initFormulaireJeu();
     brancherEvenements();
-    state.pret = true;
     afficher();
-    signalerSourcesRefusees();
-
-    // Raccourci de l'appli installée (« Ajouter un jeu ») ou lien direct
-    if (location.hash === "#ajouter") {
-        history.replaceState(history.state, "", location.pathname + location.search);
-        editer(null);
-    }
-    // L'éditeur de description se prépare en tâche de fond : le formulaire s'ouvre ensuite sans attente.
-    (window.requestIdleCallback || setTimeout)(() => preparerEditeur());
 
     // Les partages sont mis à jour en arrière-plan : on récupère aussi les changements
     // faits par les autres membres de la famille depuis la dernière visite.
@@ -141,11 +76,11 @@ function afficher() {
     const { filtre } = state;
     const duProprio = state.jeux.filter(j => jeuCorrespond(j, { proprio: filtre.proprio }));
     const possedes = duProprio.filter(j => !j.wishlist);
-    const souhaites = trierParNom(duProprio.filter(j => j.wishlist && jeuCorrespond(j, { recherche: filtre.recherche })));
+    const souhaites = trierParNom(duProprio.filter(j => j.wishlist));
 
     remplirFiltres($("#filtres"), { jeux: possedes, filtre, proprios: proprios() });
 
-    state.jeuxAffiches = trier(possedes.filter(j => jeuCorrespond(j, filtre)), filtre.tri);
+    state.jeuxAffiches = trierParNom(possedes.filter(j => jeuCorrespond(j, filtre)));
     $("#resultsCount").textContent = compteur(state.jeuxAffiches.length);
 
     afficherGrille($("#grid"), state.jeuxAffiches, (jeu) => ({
@@ -187,22 +122,15 @@ function appliquerFiltres() {
 
 /* ---------- Mises à jour locales + synchro des partages ---------- */
 
-// Firestore applique déjà les écritures sur l'appareil (l'écoute temps réel les renvoie) ;
-// on met tout de même l'affichage à jour tout de suite, sans attendre l'aller-retour.
 function majLocale(jeu) {
-    const src = state.sources.get(jeu.proprio);
-    if (src) {
-        const i = src.jeux.findIndex(j => j.id === jeu.id);
-        if (i >= 0) src.jeux[i] = jeu; else src.jeux.push(jeu);
-    }
-    sourcesModifiees();
+    const i = state.jeux.findIndex(j => j.id === jeu.id);
+    if (i >= 0) state.jeux[i] = jeu; else state.jeux.push(jeu);
     afficher();
     planifierSynchro();
 }
 
 function suppressionLocale(id) {
-    for (const src of state.sources.values()) src.jeux = src.jeux.filter(j => j.id !== id);
-    sourcesModifiees();
+    state.jeux = state.jeux.filter(j => j.id !== id);
     afficher();
     planifierSynchro();
 }
@@ -214,7 +142,7 @@ function planifierSynchro() {
 }
 
 async function synchroniserPartages() {
-    if (!state.partages.length || !state.jeuxConfirmes || !navigator.onLine) return;
+    if (!state.partages.length) return;
     const erreurs = await synchroniserTousLesPartages(state.partages, state.jeux);
     if (erreurs.length) {
         console.error(erreurs);
@@ -226,34 +154,8 @@ function erreur(e) {
     console.error(e);
     const message = e?.code === "permission-denied"
         ? "Action refusée : vous n'avez pas les droits nécessaires."
-        : e?.code === "resource-exhausted"
-            ? "Quota Firebase dépassé pour aujourd'hui. Réessayez plus tard."
-            : e instanceof ErreurImage
-                ? e.message
-                : "L'opération a échoué. Vérifiez votre connexion puis réessayez.";
+        : "L'opération a échoué. Vérifiez votre connexion puis réessayez.";
     notifier(message, "erreur");
-}
-
-/** Relance une lecture qui échoue pour une raison passagère (réseau), avec délai croissant. */
-async function avecNouvelEssai(lecture, essais = 3) {
-    for (let i = 0; ; i++) {
-        try {
-            return await lecture();
-        } catch (e) {
-            if (i >= essais - 1 || e?.code === "permission-denied") throw e;
-            await new Promise(r => setTimeout(r, 800 * 2 ** i));
-        }
-    }
-}
-
-/** Suit une écriture : message adapté si elle part plus tard, alerte si le serveur la refuse. */
-function suivreEcriture({ enAttente, confirmation }, messageOk) {
-    if (enAttente) {
-        notifier(`${messageOk ? `${messageOk} ` : ""}Enregistré sur cet appareil : ce sera envoyé dès le retour du réseau.`);
-    } else if (messageOk) {
-        notifier(messageOk);
-    }
-    confirmation.catch(erreur); // ex. refus des règles découvert au retour du réseau
 }
 
 /* ---------- Actions sur les jeux ---------- */
@@ -267,9 +169,9 @@ function preparer(dlgId, jeu) {
 async function supprimer(jeu) {
     if (await demander(preparer("#dlgSuppression", jeu)) !== "oui") return;
     try {
-        const ecriture = await supprimerDocument(COLLECTIONS.JEUX, jeu.id);
+        await deleteDocument(COLLECTIONS.JEUX, jeu.id);
         suppressionLocale(jeu.id);
-        suivreEcriture(ecriture, `« ${jeu.nom} » supprimé.`);
+        notifier(`« ${jeu.nom} » supprimé.`);
     } catch (e) { erreur(e); }
 }
 
@@ -300,11 +202,10 @@ async function acheter(jeu) {
 
 async function enregistrer(jeu, message) {
     try {
-        if (!jeu.ajouteLe && !jeu.id) jeu.ajouteLe = Date.now();
-        const ecriture = await enregistrerDocument(COLLECTIONS.JEUX, jeu.id, jeu.toDoc());
-        jeu.id = ecriture.id;
+        const id = await setDocument(COLLECTIONS.JEUX, jeu.id, jeu.toDoc());
+        jeu.id = id;
         majLocale(jeu);
-        suivreEcriture(ecriture, message);
+        if (message) notifier(message);
         return true;
     } catch (e) {
         erreur(e);
@@ -328,7 +229,7 @@ function initFormulaireJeu() {
     $("#dlgJeu").addEventListener("close", reinitialiserFormulaire);
     $("#image").addEventListener("input", majApercuImage);
     $("#style").addEventListener("change", majStylesChoisis);
-    initChampImage();
+    $("#imageApercu").addEventListener("error", () => { $("#imageApercu").hidden = true; });
     // Un champ modifié à la main n'est plus signalé comme « rempli automatiquement »
     $("#jeuForm").addEventListener("input", (e) => e.target.classList?.remove("auto-rempli"));
 
@@ -347,111 +248,11 @@ function majStylesChoisis() {
     $("#stylesChoisis").textContent = choisis.length ? `Sélectionnés : ${choisis.join(", ")}` : "";
 }
 
-/* ---------- Image : lien, fichier, photo, presse-papiers, glisser-déposer ---------- */
-
-// Image importée depuis l'appareil (data URL compressée) ; prioritaire sur le lien.
-let imageImportee = "";
-
-function imageDuFormulaire() {
-    return imageImportee || $("#image").value.trim();
-}
-
 function majApercuImage() {
     const apercu = $("#imageApercu");
-    const lien = $("#image");
-    const source = urlImageSure(imageDuFormulaire());
-    lien.disabled = Boolean(imageImportee);
-    lien.placeholder = imageImportee ? `Image importée (${formatPoids(poidsDataUrl(imageImportee))})` : "Coller un lien https://…";
-    if (imageImportee) lien.value = "";
-    apercu.hidden = !source;
-    $("#imageVide").hidden = Boolean(source);
-    if (source && apercu.getAttribute("src") !== source) apercu.src = source;
-    if (!source) apercu.removeAttribute("src");
-    $("#imageRetirer").hidden = !source;
-    // Copier l'image d'un lien : elle restera affichée même si le site d'origine disparaît.
-    $("#imageCopie").hidden = imageImportee || !/^https?:/i.test(lien.value.trim());
-}
-
-function infoImage(message = "", type = "") {
-    const info = $("#imageInfo");
-    info.textContent = message;
-    info.className = `image-info ${type}`.trim();
-}
-
-async function importerImage(obtenir, messageEnCours) {
-    const zone = $("#imageZone");
-    zone.classList.add("chargement");
-    infoImage(messageEnCours);
-    try {
-        imageImportee = await obtenir();
-        $("#image").classList.remove("auto-rempli");
-        majApercuImage();
-        infoImage(`Image enregistrée avec le jeu (${formatPoids(poidsDataUrl(imageImportee))}).`, "succes");
-    } catch (e) {
-        console.warn(e);
-        infoImage(e instanceof ErreurImage ? e.message : "L'image n'a pas pu être importée.", "erreur");
-    } finally {
-        zone.classList.remove("chargement");
-    }
-}
-
-function initChampImage() {
-    const choisir = (input) => input.addEventListener("change", () => {
-        const fichier = input.files?.[0];
-        input.value = ""; // permet de rechoisir le même fichier
-        if (fichier) importerImage(() => compresserImage(fichier), "Préparation de l'image…");
-    });
-    choisir($("#imageFichier"));
-    choisir($("#imagePhoto"));
-    $("#imageFichierBtn").addEventListener("click", () => $("#imageFichier").click());
-    $("#imagePhotoBtn").addEventListener("click", () => $("#imagePhoto").click());
-    $("#imageRetirer").addEventListener("click", () => {
-        imageImportee = "";
-        $("#image").value = "";
-        majApercuImage();
-        infoImage();
-    });
-    $("#imageCopie").addEventListener("click", () => {
-        const url = $("#image").value.trim();
-        importerImage(() => copierDepuisLien(url), "Copie de l'image…");
-    });
-    $("#imageApercu").addEventListener("error", () => {
-        if (imageImportee) return;
-        $("#imageApercu").hidden = true;
-        $("#imageVide").hidden = false;
-        infoImage("Cette image ne s'affiche pas : le lien est peut-être incorrect ou le site la bloque.", "erreur");
-    });
-    $("#imageApercu").addEventListener("load", () => {
-        if ($("#imageInfo").classList.contains("erreur")) infoImage();
-    });
-
-    // Glisser-déposer sur la vignette, ou coller une image n'importe où dans le formulaire
-    const zone = $("#imageZone");
-    zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("survol"); });
-    zone.addEventListener("dragleave", () => zone.classList.remove("survol"));
-    zone.addEventListener("drop", (e) => {
-        e.preventDefault();
-        zone.classList.remove("survol");
-        const fichier = imageDuTransfert(e.dataTransfer);
-        if (fichier) importerImage(() => compresserImage(fichier), "Préparation de l'image…");
-    });
-    $("#jeuForm").addEventListener("paste", (e) => {
-        const fichier = imageDuTransfert(e.clipboardData);
-        if (!fichier) return;
-        e.preventDefault();
-        importerImage(() => compresserImage(fichier), "Préparation de l'image collée…");
-    });
-}
-
-/* ---------- Éditeur de description ---------- */
-
-async function preparerEditeur() {
-    quill ??= await creerEditeur("#editor", { onSecours: (m) => notifier(m, "erreur") });
-    return quill;
-}
-
-function getQuill() {
-    return quill; // toujours prêt : editer() attend preparerEditeur() avant d'ouvrir le formulaire
+    const url = $("#image").value.trim();
+    apercu.hidden = !/^https?:\/\//i.test(url);
+    if (!apercu.hidden && apercu.getAttribute("src") !== url) apercu.src = url;
 }
 
 /* ---------- Remplissage automatique ---------- */
@@ -463,8 +264,7 @@ function capturerFormulaire() {
         valeurs: Object.fromEntries(CHAMPS_AUTO.map(id => [id, $(id).value])),
         extension: $("#extension").checked,
         styles: [...$("#style").selectedOptions].map(o => o.value),
-        description: getQuill().getHtml(),
-        imageImportee
+        description: getQuill().root.innerHTML
     };
 }
 
@@ -472,8 +272,7 @@ function restaurerFormulaire(etat) {
     Object.entries(etat.valeurs).forEach(([id, v]) => { $(id).value = v; });
     $("#extension").checked = etat.extension;
     [...$("#style").options].forEach(o => { o.selected = etat.styles.includes(o.value); });
-    getQuill().setHtml(etat.description);
-    imageImportee = etat.imageImportee || "";
+    getQuill().clipboard.dangerouslyPasteHTML(etat.description);
     document.querySelectorAll("#jeuForm .auto-rempli").forEach(n => n.classList.remove("auto-rempli"));
     majApercuImage();
     majStylesChoisis();
@@ -506,7 +305,7 @@ function appliquerFiche(fiche) {
         $("#age_min").value = fiche.ageMinimal;
         marquer("#age_min");
     });
-    tenter("image", fiche.image, vide("#image") && !imageImportee, () => {
+    tenter("image", fiche.image, vide("#image"), () => {
         $("#image").value = fiche.image;
         marquer("#image");
         majApercuImage();
@@ -523,22 +322,30 @@ function appliquerFiche(fiche) {
     }
     const q = getQuill();
     tenter("description", fiche.description, !q.getText().trim(), () => {
-        q.setHtml(nettoyerHtml(fiche.description));
+        q.clipboard.dangerouslyPasteHTML(nettoyerHtml(fiche.description));
         $("#editor").classList.add("auto-rempli");
     });
     return { remplis, ignores };
 }
 
-async function editer(jeu) {
-    const q = await preparerEditeur();
+function getQuill() {
+    if (!quill) {
+        quill = new Quill("#editor", {
+            theme: "snow",
+            modules: { toolbar: [["bold", "italic", "underline"], [{ list: "ordered" }, { list: "bullet" }], ["link"]] }
+        });
+    }
+    return quill;
+}
+
+function editer(jeu) {
     jeuEnEdition = jeu || null;
     const v = (id, val) => { $(id).value = val ?? ""; };
     $("#dlgJeuTitre").textContent = jeu ? `Modifier « ${jeu.nom} »` : "Ajouter un jeu";
-    imageImportee = "";
+    const q = getQuill();
     if (jeu) {
         v("#titre", jeu.nom);
-        if (estImageImportee(jeu.image)) imageImportee = jeu.image;
-        else v("#image", jeu.image);
+        v("#image", jeu.image);
         v("#joueurs_min", jeu.joueurs[0]);
         v("#joueurs_max", jeu.joueurs[1]);
         v("#duree_min", jeu.duree[0]);
@@ -552,9 +359,9 @@ async function editer(jeu) {
         $("#extension").checked = jeu.estExtension;
         $("#wishlistInput").checked = jeu.wishlist;
         [...$("#style").options].forEach(o => { o.selected = jeu.styles.includes(o.value); });
-        q.setHtml(nettoyerHtml(jeu.description));
+        q.clipboard.dangerouslyPasteHTML(nettoyerHtml(jeu.description));
+        majApercuImage();
     }
-    majApercuImage();
     majStylesChoisis();
     ouvrirDialog($("#dlgJeu"));
     $("#titre").focus();
@@ -563,12 +370,10 @@ async function editer(jeu) {
 function reinitialiserFormulaire() {
     jeuEnEdition = null;
     $("#jeuForm").reset();
-    quill?.vider();
-    imageImportee = "";
-    infoImage();
+    quill?.setContents([{ insert: "\n" }]);
     document.querySelectorAll("#jeuForm .error-message").forEach(n => { n.style.display = "none"; });
     document.querySelectorAll("#jeuForm .auto-rempli").forEach(n => n.classList.remove("auto-rempli"));
-    majApercuImage();
+    $("#imageApercu").hidden = true;
     saisieAuto?.reinitialiser();
     $("#dlgJeu .modal-body").scrollTop = 0;
 }
@@ -589,7 +394,7 @@ async function sauvegarderFormulaire() {
     const joueursMax = entier("#joueurs_max");
     const dureeMin = entier("#duree_min");
     const dureeMax = entier("#duree_max");
-    const html = quill.getHtml();
+    const html = quill.root.innerHTML;
 
     const jeu = new Jeux({
         // En édition, on conserve le propriétaire et l'état de prêt (l'ancienne version
@@ -597,7 +402,7 @@ async function sauvegarderFormulaire() {
         ...(jeuEnEdition || {}),
         proprio: jeuEnEdition?.proprio || state.moi,
         nom: titre,
-        image: imageDuFormulaire(),
+        image: $("#image").value.trim(),
         joueurs: joueursMax && joueursMax !== joueursMin ? [joueursMin, Math.max(joueursMin, joueursMax)] : [joueursMin],
         duree: [dureeMin, dureeMax].filter(d => d !== undefined).sort((a, b) => a - b),
         difficulte: $("#difficulte").value,
@@ -694,6 +499,7 @@ function afficherDiagnostic() {
 }
 
 const formatDate = (ms) => new Date(ms).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+const icone = (nom) => el("i", { class: `fas fa-${nom}`, "aria-hidden": "true" });
 
 function panneauQr(p, lien) {
     const panneau = el("div", { class: "qr-panneau", id: `qr-${p.jeton}`, hidden: true });
@@ -879,49 +685,14 @@ async function soumettrePartage(e) {
     }
 }
 
-/* ---------- Sauvegarde : export JSON (complet) ou CSV (tableur) ---------- */
-
-function telecharger(contenu, type, nom) {
-    const url = URL.createObjectURL(new Blob([contenu], { type }));
-    const a = el("a", { href: url, download: nom, hidden: true });
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
-
-function exporter(format) {
-    const mesJeux = state.jeux.filter(estAMoi);
-    if (!mesJeux.length) return notifier("Aucun jeu à exporter.", "erreur");
-    const date = new Date().toISOString().slice(0, 10);
-    const base = `tapis-vert-${slug(state.famille.libelle)}-${date}`;
-    if (format === "csv") {
-        telecharger(versCsv(mesJeux, { libelles: { difficulte: DIFFICULTE, styles: STYLES } }), "text/csv;charset=utf-8", `${base}.csv`);
-    } else {
-        telecharger(versJson(mesJeux, { auteur: state.moi }), "application/json", `${base}.json`);
-    }
-    notifier(`${mesJeux.length} jeu${mesJeux.length > 1 ? "x" : ""} exporté${mesJeux.length > 1 ? "s" : ""}.`);
-}
-
 /* ---------- Événements ---------- */
 
 function brancherEvenements() {
     $("#filtres").addEventListener("change", appliquerFiltres);
-    let minuterieRecherche = null;
-    $("#rechercheInput").addEventListener("input", () => {
-        clearTimeout(minuterieRecherche);
-        minuterieRecherche = setTimeout(appliquerFiltres, 150);
-    });
-    $("#exportBtn").addEventListener("click", () => ouvrirDialog($("#dlgExport")));
-    $("#dlgExport").addEventListener("click", (e) => {
-        const format = e.target.closest("[data-export]")?.dataset.export;
-        if (!format) return;
-        exporter(format);
-        $("#dlgExport").close();
-    });
     $("#logout").addEventListener("click", logout);
     $("#editCreate").addEventListener("click", () => editer(null));
     $("#surpriseBtn").addEventListener("click", () => tirerAuSort($("#dlgSurprise"), state.jeuxAffiches));
+    brancherHautDePage($("#hautDePageBtn"));
 
     $("#partageTitre").value = titreParDefaut(state.famille.libelle);
     $("#partagesBtn").addEventListener("click", () => {
@@ -932,17 +703,7 @@ function brancherEvenements() {
     $("#formPartage").addEventListener("submit", soumettrePartage);
 }
 
-remplacerIcones();
-enregistrerServiceWorker();
-surveillerReseau({
-    horsLigne: () => notifier("Vous êtes hors ligne : la ludothèque reste consultable et vos modifications seront envoyées au retour du réseau."),
-    enLigne: () => { notifier("Connexion rétablie."); planifierSynchro(); }
-});
-
 init().catch((e) => {
     erreur(e);
-    const zone = $("#resultsCount");
-    const reessayer = el("button", { type: "button", class: "btn" }, icone("rotate"), " Réessayer");
-    reessayer.addEventListener("click", () => location.reload());
-    zone.replaceChildren("Impossible de charger la ludothèque. ", reessayer);
+    $("#resultsCount").textContent = "Impossible de charger la ludothèque. Rechargez la page.";
 });

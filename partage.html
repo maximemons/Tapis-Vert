@@ -7,10 +7,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <title>Ludothèque – Tapis Vert</title>
-  <meta name="theme-color" content="#0E6B3B">
-  <link rel="icon" type="image/x-icon" href="./favicon.ico" sizes="48x48">
-  <link rel="icon" type="image/png" href="./icons/icon-192.png" sizes="192x192">
-  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
   <link rel="stylesheet" href="./styles/common.css">
   <link rel="stylesheet" href="./styles/dashboard.css">
 </head>
@@ -24,8 +21,6 @@
 
     <div id="contenu" hidden>
       <div class="filters" id="filtres">
-        <input type="search" id="rechercheInput" class="recherche" placeholder="Rechercher un jeu…" aria-label="Rechercher un jeu par son nom" autocomplete="off" enterkeyhint="search">
-        <select id="triSelect" aria-label="Trier par"></select>
         <select id="styleSelect" aria-label="Style"></select>
         <select id="playersSelect" aria-label="Nombre de joueurs"></select>
         <select id="durationSelect" aria-label="Durée"></select>
@@ -45,6 +40,11 @@
     <div id="etat" class="etat" role="status">Chargement de la ludothèque…</div>
     <p class="pied">Mis à jour <span id="majLe">récemment</span>.</p>
   </div>
+
+  <!-- Retour en haut de page (visible dès qu'on a défilé) -->
+  <button type="button" class="haut-de-page" id="hautDePageBtn" title="Remonter en haut de la page" aria-label="Remonter en haut de la page" hidden>
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
 
   <dialog id="dlgFiche" class="dlg dlg-large" aria-label="Fiche du jeu"></dialog>
   <dialog id="dlgSurprise" class="dlg">

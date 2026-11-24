@@ -3,7 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.mjs",
-    "test:e2e": "python3 tests/e2e/e2e.py"
+    "test": "node --test tests/*.test.mjs"
   }
 }

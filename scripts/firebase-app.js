@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 
 // Configuration web Firebase : ces identifiants sont publics par nature.
 // La sécurité repose sur les règles Firestore (voir firestore.rules), pas sur leur secret.

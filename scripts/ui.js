@@ -1,16 +1,37 @@
 // Composants d'interface partagés entre le tableau de bord (édition) et la vue lecture seule.
 // Règle d'or : aucune donnée utilisateur n'est injectée via innerHTML, sauf la description
 // qui passe obligatoirement par DOMPurify.
-import DOMPurify from "./vendor/purify-3.4.17.es.mjs";
-import { icone } from "./icones.js";
+import DOMPurify from "https://esm.sh/dompurify@3.1.6";
 import { DIFFICULTE, STYLES } from "./records.js";
 import {
-    DUREES, TOUS, TRIS, facettes, formatPlage, etoiles, urlImageSure, urlIntegrationYoutube
+    DUREES, TOUS, facettes, formatPlage, etoiles, urlHttpSure, urlIntegrationYoutube
 } from "./logic.js";
 
 /* ---------- Utilitaires DOM ---------- */
 
 export const $ = (sel, racine = document) => racine.querySelector(sel);
+
+/**
+ * Bouton « retour en haut » : affiché dès que la page a défilé vers le bas,
+ * caché en haut de page. Défilement doux, sauf si l'utilisateur réduit les animations.
+ */
+export function brancherHautDePage(bouton, seuil = 40) {
+    if (!bouton) return;
+    let attente = false;
+    const maj = () => {
+        attente = false;
+        const visible = window.scrollY > seuil;
+        bouton.hidden = !visible;
+    };
+    window.addEventListener("scroll", () => {
+        if (!attente) { attente = true; requestAnimationFrame(maj); }
+    }, { passive: true });
+    bouton.addEventListener("click", () => {
+        const reduit = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        window.scrollTo({ top: 0, behavior: reduit ? "auto" : "smooth" });
+    });
+    maj();
+}
 
 /** Crée un élément : el("div", { class: "x", onclick: fn }, enfant1, "texte"...) */
 export function el(tag, attrs = {}, ...enfants) {
@@ -30,24 +51,7 @@ export function el(tag, attrs = {}, ...enfants) {
     return n;
 }
 
-export { icone };
-
-/** Vignette du jeu : si l'image ne se charge pas (lien mort, hors ligne…), le dé la remplace. */
-// Liens d'images en échec pendant cette visite : inutile de les retenter à chaque réaffichage.
-const liensCasses = new Set();
-
-export function imageJeu(source, attrs = {}) {
-    const src = urlImageSure(source);
-    const placeholder = () => el("div", { class: "card-placeholder", "aria-hidden": "true" }, "🎲");
-    if (!src || liensCasses.has(src)) return attrs.class === "game-cover" ? null : placeholder();
-    const img = el("img", { src, alt: "", decoding: "async", referrerpolicy: "no-referrer", ...attrs });
-    img.addEventListener("error", () => {
-        // Hors ligne, l'échec est passager : on ne condamne pas le lien.
-        if (navigator.onLine !== false) liensCasses.add(src);
-        if (attrs.class === "game-cover") img.remove(); else img.replaceWith(placeholder());
-    }, { once: true });
-    return img;
-}
+const icone = (nom) => el("i", { class: `fas fa-${nom}`, "aria-hidden": "true" });
 
 /* ---------- Nettoyage HTML (descriptions Quill) ---------- */
 
@@ -134,12 +138,15 @@ const estPrete = (jeu) => jeu.prete === true || Boolean(jeu.estPrete);
  * @param onOuvrir callback d'ouverture de la fiche
  */
 export function carteJeu(jeu, { actions = [], onOuvrir } = {}) {
+    const image = urlHttpSure(jeu.image);
     const carte = el("article", {
         class: `card${estPrete(jeu) ? " rented" : ""}`,
         tabindex: "0",
         "aria-label": jeu.nom
     },
-        imageJeu(jeu.image, { loading: "lazy" }),
+        image
+            ? el("img", { src: image, alt: "", loading: "lazy", referrerpolicy: "no-referrer" })
+            : el("div", { class: "card-placeholder", "aria-hidden": "true" }, "🎲"),
         el("h3", {}, jeu.nom, jeu.estExtension ? el("sup", { class: "extension" }, "extension") : null),
         el("div", { class: "info" }, `⏱ ${jeu.duree?.length ? `${formatPlage(jeu.duree)} min` : "–"} · 👥 ${formatPlage(jeu.joueurs)}`),
         el("div", { class: "tags" }, (jeu.styles || []).map(s => el("span", {}, STYLES[s] || s))),
@@ -173,6 +180,7 @@ export function afficherGrille(grille, jeux, options) {
 /* ---------- Fiche détaillée ---------- */
 
 export function afficherFiche(dlg, jeu) {
+    const image = urlHttpSure(jeu.image);
     const video = urlIntegrationYoutube(jeu.video);
     const meta = (libelle, valeur) => valeur
         ? el("div", { class: "meta-item" }, el("div", { class: "meta-label" }, libelle), el("div", { class: "meta-value" }, valeur))
@@ -186,7 +194,7 @@ export function afficherFiche(dlg, jeu) {
             el("h2", {}, jeu.nom, jeu.estExtension ? el("sup", { class: "extension" }, "extension") : null),
             el("button", { type: "button", class: "modal-close", "aria-label": "Fermer", onclick: () => dlg.close() }, "×")
         ),
-        imageJeu(jeu.image, { class: "game-cover" }),
+        image ? el("img", { class: "game-cover", src: image, alt: "", referrerpolicy: "no-referrer" }) : null,
         estPrete(jeu) ? el("p", { class: "badge-prete" }, "Actuellement prêté") : null,
         el("div", { class: "game-meta" },
             meta("Joueurs", jeu.joueurs?.length ? formatPlage(jeu.joueurs, " à ") : ""),
@@ -221,10 +229,11 @@ export function tirerAuSort(dlg, jeux) {
         zone.replaceChildren(el("p", {}, "Élargis tes critères puis relance le dé."));
     } else {
         const jeu = jeux[Math.floor(Math.random() * jeux.length)];
+        const image = urlHttpSure(jeu.image);
         titre.textContent = "✨ Tu peux jouer à ✨";
         zone.replaceChildren(
             el("h3", {}, jeu.nom),
-            urlImageSure(jeu.image) ? imageJeu(jeu.image, { class: "game-cover" }) : null
+            image ? el("img", { src: image, alt: "", referrerpolicy: "no-referrer" }) : null
         );
     }
     ouvrirDialog(dlg);
@@ -259,13 +268,6 @@ export function remplirFiltres(racine, { jeux, filtre, proprios }) {
         );
         owner.value = filtre.proprio || TOUS;
     }
-    const recherche = $("#rechercheInput", racine);
-    if (recherche && document.activeElement !== recherche) recherche.value = filtre.recherche || "";
-    const tri = $("#triSelect", racine);
-    if (tri) {
-        if (!tri.options.length) tri.append(...Object.entries(TRIS).map(([v, l]) => el("option", { value: v }, l)));
-        tri.value = TRIS[filtre.tri] ? filtre.tri : "nom";
-    }
     remplirSelect($("#styleSelect", racine), "Style", f.styles.map(s => [s, STYLES[s] || s]), filtre.style);
     remplirSelect($("#playersSelect", racine), "Joueurs", f.joueurs.map(n => [n, `${n} joueur${n > 1 ? "s" : ""}`]), filtre.joueur);
     remplirSelect($("#durationSelect", racine), "Durée", Object.entries(DUREES).map(([k, d]) => [k, d.libelle]), filtre.duree);
@@ -274,7 +276,7 @@ export function remplirFiltres(racine, { jeux, filtre, proprios }) {
 
 export function lireFiltres(racine) {
     const v = (id) => $(id, racine)?.value?.trim() || "";
-    const filtre = { recherche: v("#rechercheInput"), tri: v("#triSelect") === "nom" ? "" : v("#triSelect"), style: v("#styleSelect"), joueur: v("#playersSelect"), duree: v("#durationSelect"), difficulte: v("#difficultySelect") };
+    const filtre = { style: v("#styleSelect"), joueur: v("#playersSelect"), duree: v("#durationSelect"), difficulte: v("#difficultySelect") };
     if ($("#ownerSelect", racine)) filtre.proprio = v("#ownerSelect") || TOUS;
     return Object.fromEntries(Object.entries(filtre).filter(([, x]) => x));
 }
